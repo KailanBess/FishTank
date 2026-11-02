@@ -47,6 +47,7 @@ internal sealed class AppLockController : IMessageFilter, IDisposable
     private void SessionChanged(object sender, SessionSwitchEventArgs e)
     {
         if (e.Reason != SessionSwitchReason.SessionLock && e.Reason != SessionSwitchReason.RemoteDisconnect && e.Reason != SessionSwitchReason.ConsoleDisconnect) return;
+        owner.LockBrowserSession();
         bool enabled = true;
         try { enabled = SecurityPreferences.Load().LockWithWindows; } catch { }
         if (enabled && !disposed && owner.IsHandleCreated)
@@ -57,6 +58,7 @@ internal sealed class AppLockController : IMessageFilter, IDisposable
     internal void Lock()
     {
         if (locking || disposed) return;
+        owner.LockBrowserSession();
         if (parked) { LockVaults(); if (AppAccess.Enabled) AppAccess.Lock(); return; }
         if (!AppAccess.Enabled)
         {
@@ -113,6 +115,7 @@ internal sealed class AppLockController : IMessageFilter, IDisposable
     internal void ParkInTray()
     {
         if (disposed || locking) return;
+        owner.LockBrowserSession();
         LockVaults(); if (AppAccess.Enabled) AppAccess.Lock(); parked = true;
     }
     internal bool RestoreFromTray()

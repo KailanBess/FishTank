@@ -41,6 +41,13 @@ public sealed class PasswordSession : IDisposable
 		}
 	}
 
+	// Read-only dashboard refreshes must not extend the vault's idle timeout.
+	internal IList<PasswordEntry> Snapshot()
+	{
+		if (!IsUnlocked) throw new InvalidOperationException("Password vault is locked.");
+		return entries.Select(e => e.Copy()).ToList().AsReadOnly();
+	}
+
 	private static byte[] Random(int size)
 	{
 		byte[] array = new byte[size];
@@ -189,7 +196,7 @@ public sealed class PasswordSession : IDisposable
 
 	private static void ValidatePayload(PasswordPayload payload)
 	{
-		if (payload == null || payload.Version != 1 || payload.Entries == null || payload.Entries.Count > 2000)
+		if (payload == null || (payload.Version != 1 && payload.Version != 2) || payload.Entries == null || payload.Entries.Count > 2000)
 		{
 			throw new InvalidDataException("Invalid vault payload.");
 		}
@@ -206,6 +213,9 @@ public sealed class PasswordSession : IDisposable
 				throw new InvalidDataException("Duplicate entry ID");
 			}
 		}
+		foreach (var entry in payload.Entries.Where(e => e.LinkedEmailId != ""))
+			if (!payload.Entries.Any(e => e.Id == entry.LinkedEmailId && e.Kind == "Email"))
+				throw new InvalidDataException("A linked email account is missing. Save the email account first, or remove the connection.");
 	}
 
 	private static byte[] ReadFile(string path)
@@ -363,6 +373,8 @@ public sealed class PasswordSession : IDisposable
 	public void Delete(string id)
 	{
 		Touch();
+		if (entries.Any(e => e.LinkedEmailId == id))
+			throw new InvalidOperationException("Move or unlink this email account's service connections before deleting it.");
 		List<PasswordEntry> list = (from e in entries
 			where e.Id != id
 			select e.Copy()).ToList();
@@ -447,6 +459,8 @@ public sealed class PasswordSession : IDisposable
 				entry.Password = "";
 				entry.Username = "";
 				entry.Notes = "";
+				entry.Email = "";
+				entry.LinkedEmailId = "";
 			}
 			entries.Clear();
 		}

@@ -44,6 +44,8 @@ public sealed class Desktop : Form
 	private Label liveCoverage;
 	private ContextMenuStrip trayMenu;
 	private bool exitRequested;
+	private LocalBrowserServer browser;
+	private BrowserBackend browserBackend;
 
 	private string current = "Dashboard";
 
@@ -138,7 +140,7 @@ public sealed class Desktop : Form
 		appLock = new AppLockController(this, SetStatus);
 		securityScheduler = new SecurityScheduler(NotifySecurity);
 		liveDisplay = new System.Windows.Forms.Timer { Interval = 2000 };
-		liveDisplay.Tick += delegate { RefreshLiveDisplay(); }; liveDisplay.Start();
+		liveDisplay.Tick += delegate { RefreshLiveDisplay(); browserBackend?.CheckIdle(); if (browser != null && !BrowserAccessAllowed()) LockBrowserSession(); }; liveDisplay.Start();
 		bool liveStarted = false;
 		Shown += delegate {
 			if (liveStarted) return; liveStarted = true;
@@ -171,11 +173,51 @@ public sealed class Desktop : Form
 		if (disposing && !resourcesDisposed)
 		{
 			resourcesDisposed = true;
+			browser?.Dispose(); browserBackend?.Dispose();
 			liveDisplay?.Dispose(); liveDetection?.Dispose(); appLock?.Dispose(); securityScheduler?.Dispose(); securityIcon?.Dispose(); trayMenu?.Dispose();
 			monitor.Dispose(); tips.Dispose(); artwork?.Dispose(); displayArtwork?.Dispose(); ownedIcon?.Dispose();
 		}
 		base.Dispose(disposing);
 	}
+
+    private T BrowserUi<T>(Func<T> action)
+    {
+        if (IsDisposed || !IsHandleCreated) throw new ObjectDisposedException(nameof(Desktop));
+        return InvokeRequired ? (T)Invoke(action) : action();
+    }
+    private bool BrowserAccessAllowed() => !IsDisposed && !resourcesDisposed && appLock != null && !appLock.IsLocked && (!AppAccess.Enabled || AppAccess.SessionUnlocked);
+    internal void LockBrowserSession() { browser?.Revoke(); }
+    private string BrowserStatus() => BrowserUi(() => Core.Json(new {
+        liveEnabled = liveDetection.Enabled, liveStatus = liveDetection.Status, lastScan,
+        events = liveDetection.Events().TakeLastCompatible(50).Select(e => new { e.Kind, e.Summary, recorded = e.RecordedUtc.ToLocalTime().ToString("g") })
+    }));
+    private bool BrowserQuickScan() => BrowserUi(() => {
+        if (!BrowserAccessAllowed() || busy) return false;
+        if (!Confirm("The paired local browser requests a Defender quick scan. Run it?\n\nExisting Defender policy may quarantine or remove detected threats.")) return false;
+        if (!BrowserAccessAllowed()) return false;
+        StartWork(() => Core.Scan("Quick", null), "Scan"); return true;
+    });
+    private void OpenBrowserDashboard()
+    {
+        if (!BrowserAccessAllowed()) return;
+        if (browser == null)
+        {
+            browserBackend = new BrowserBackend(BrowserStatus, BrowserQuickScan);
+            try { browser = new LocalBrowserServer(() => BrowserUi(BrowserAccessAllowed), browserBackend.Execute, browserBackend.Lock); }
+            catch (System.Net.HttpListenerException)
+            {
+                browserBackend.Dispose(); browserBackend = null;
+                ShowMessage("Browser listener could not start", "Port 47653 may be in use, or Windows needs a URL reservation for your account. See BROWSER-AND-ACCOUNT-ORGANIZATION.md in the preview package for the one-time administrator setup. Run FishTank normally afterward; no firewall opening is required."); return;
+            }
+        }
+        try { Process.Start(new ProcessStartInfo(browser.PairingUrl()) { UseShellExecute = true }); SetStatus("Browser pairing link opened. Keep it private. A new link revokes the previous browser session and locks its vault."); }
+        catch { LockBrowserSession(); SetStatus("The browser could not be opened. The pairing link was revoked. Check your default browser and try again."); }
+    }
+    private void StopBrowserDashboard()
+    {
+        browser?.Dispose(); browser = null; browserBackend?.Dispose(); browserBackend = null;
+        SetStatus("Browser dashboard stopped. Its sessions and unlocked vault were cleared.");
+    }
 
 	private void NotifySecurity(string message)
 	{
@@ -462,7 +504,7 @@ public sealed class Desktop : Form
 		}
 		panel4.AutoScrollMinSize = new Size(0, num);
 		UpdateNavigation(panel4);
-		Label label3 = Label("WINDOWS SECURITY COMPANION\nDevelopment preview · 0.9.0", 8f, palette.Muted);
+		Label label3 = Label("WINDOWS SECURITY COMPANION\nDevelopment preview · 0.10.0", 8f, palette.Muted);
 		label3.Dock = DockStyle.Bottom;
 		label3.Height = (int)TextSize(52f);
 		label3.Visible = appearance.ShowFooter;
@@ -1006,8 +1048,8 @@ public sealed class Desktop : Form
 			ActionRow(Button("Open protected files", delegate { using (var safe = new ProtectedFilesDialog(palette)) { safe.Icon = Icon; safe.ShowDialog(this); } }, true));
 			break;
 		case "Password Manager":
-			Header("Passwords", "Store credentials locally and generate distinct passwords for each account.");
-			Note("A master-passphrase vault", "The encrypted vault stores names, usernames, passwords, sites and notes. It locks after five minutes of inactivity or when Windows locks. The master passphrase cannot be reset if forgotten.");
+			Header("Passwords", "Organize email accounts, their connected services, and each service’s own credentials.");
+			Note("A master-passphrase vault", "The encrypted vault groups email accounts with linked services, separate service usernames/passwords, linked sign-in methods, sites and notes. It locks after five minutes of inactivity or when Windows locks. The master passphrase cannot be reset if forgotten.");
 			ActionRow(Button("Open password manager", delegate
 			{
 				using PasswordManagerDialog passwordManagerDialog = new PasswordManagerDialog(palette);
@@ -1020,7 +1062,9 @@ public sealed class Desktop : Form
 		{
 			Header("Settings", "Choose a simple view or explore advanced tools.");
 			AddViewControls();
-			ActionRow(Button("Locking, reminders and verified updates", OpenSecurityTools, false));
+            Note("Local browser dashboard", "Open FishTank in a browser on this PC. Pairing links last one minute and work once. Browser access locks with the app and after five minutes without an action. This does not expose a website to your network.");
+            ActionRow(Button("Open browser dashboard", OpenBrowserDashboard, true), Button("Stop browser dashboard", StopBrowserDashboard, false));
+            ActionRow(Button("Locking, reminders and verified updates", OpenSecurityTools, false));
 			Surface surface = Card(195);
 			Label label = Label("Appearance & accessibility", 18f, palette.Text);
 			label.Font = Face(18f, FontStyle.Bold);

@@ -4,7 +4,7 @@ namespace FishTank;
 
 public sealed class PasswordPayload
 {
-	public int Version = 1;
+	public int Version = 2;
 
 	public List<PasswordEntry> Entries = new List<PasswordEntry>();
 }

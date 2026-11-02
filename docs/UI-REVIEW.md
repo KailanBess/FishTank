@@ -31,3 +31,9 @@ dotnet build tests/WindowsUi/WindowsUi.csproj -c Release
 ```
 
 Before replacing an installed build, inspect screenshots and test pointer hover, keyboard focus, navigation while work runs, theme preview/save/cancel, real Windows DPI settings (100%, 125%, 150%, 200%), smaller screens, and dialogs with long text. App text scale does not substitute for actual Windows DPI testing. Test app/vault sign-in, recovery, backups, scans, and real server delivery separately. No independent security audit or guarantee of zero graphical defects is claimed.
+
+## Browser dashboard, 0.10.0
+
+The new local browser dashboard was exercised in Chromium with the actual loopback server and vault implementation, using fixture Windows status/collectors. Its 22 UI checks passed. Screenshots at desktop, tablet, 390px and 320px widths, plus enlarged text, were captured; desktop overview, mobile account grouping and narrow account-editor screenshots were inspected. Long service-name overflow found during testing was fixed. Separate server/session/vault checks (183 passing) cover authentication, encryption, legacy migration and conflict protection.
+
+Run `dotnet build tests/Browser/Browser.csproj`, then `python3 tests/browser-ui.py` with Playwright/Chromium installed. `--dotnet`, `--chromium`, and `--output` select local tools/output; all credentials are disposable fixtures. GitHub Actions saves the browser screenshots separately. The Windows editor harness also covers the new account/connection controls. It compiles here; native Windows UI/runtime validation is still pending. See [the browser setup guide](BROWSER-AND-ACCOUNT-ORGANIZATION.md).

@@ -19,7 +19,8 @@ try{
   'docs/SECURITY-AND-INTEGRITY.md',
   'docs/PROTECTED-FILES-AND-GITHUB-UPDATES.md',
   'docs/DISK-HEALTH-AND-BACKUP-AGE.md',
-  'docs/LIVE-DETECTION.md'
+  'docs/LIVE-DETECTION.md',
+  'docs/BROWSER-AND-ACCOUNT-ORGANIZATION.md'
  )
  foreach($file in $files){Copy-Item -LiteralPath (Join-Path $root $file) -Destination $temporary}
  $version=[Reflection.AssemblyName]::GetAssemblyName((Join-Path $temporary 'FishTank.exe')).Version
@@ -35,6 +36,7 @@ Protected Files adds independent passphrase-encrypted containers for selected fi
 Security Center > Security and integrity tools contains protection reviews, startup and folder integrity, permission/network reviews, backup verification and isolated restore drills, locking/reminder preferences, publisher checks and verified-update staging.
 Disk health and free space adds read-only device/capacity warnings; Backup and recovery shows recorded copy age separately from verification age. Read DISK-HEALTH-AND-BACKUP-AGE.md for thresholds, defaults and unknown-data limits.
 Monitoring adds optional live Defender event alerts, encrypted local history and a separate keep-in-tray option. Both monitoring and tray mode default off. Read LIVE-DETECTION.md for coverage and privacy limits.
+Settings > Open browser dashboard adds a local-only paired browser interface. Passwords now groups email accounts and connected services with separate usernames/passwords. Read BROWSER-AND-ACCOUNT-ORGANIZATION.md for the one-time Windows URL permission (if needed), session controls, and vault migration before editing an existing vault.
 Simple view is the default. Advanced view adds evidence and controls without changing protection.
 
 This is not an audited or production-approved security release. Windows runtime and visual validation remain pending in the Linux build workspace; see SECURITY-AND-INTEGRITY.md for the exact checks and limits.

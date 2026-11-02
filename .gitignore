@@ -18,3 +18,5 @@ environment
 *.p12
 *.key
 *.pem
+
+browser-artifacts/

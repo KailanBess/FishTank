@@ -100,6 +100,24 @@ internal static class Program
                     safe.Hide();
                 }
             }
+            var account = new PasswordEntry { Kind = "Email", Title = "Personal email", Email = "fixture@example.test", Password = "Email fixture secret!" };
+            var connected = new PasswordEntry { Title = "EA", LinkedEmailId = account.Id, Username = "EAUsername", Password = "Service fixture secret!" };
+            using (var editor = new PasswordEditor(connected, false, Palette.From(new FishTank.Appearance()), new[] { account }))
+            {
+                editor.Size = new Size(630, 700); editor.StartPosition = FormStartPosition.Manual;
+                editor.Location = new Point(-30000, -30000); editor.ShowInTaskbar = false; editor.Show(); Application.DoEvents();
+                var controls = Descendants(editor);
+                var connection = controls.OfType<ComboBox>().Single(c => c.AccessibleName == "Email connection");
+                Check(connection.SelectedIndex == 1, "Service did not retain its email connection");
+                var serviceUser = controls.OfType<TextBox>().Single(c => c.AccessibleName == "Username");
+                Check(serviceUser.Text == "EAUsername", "Separate service username was lost");
+                var linked = controls.OfType<CheckBox>().Single(c => c.Text.StartsWith("Sign in through"));
+                linked.Checked = true;
+                Check(!controls.OfType<TextBox>().Single(c => c.AccessibleName == "Password").Enabled, "Linked sign-in still required a separate password");
+                using (var bitmap = new Bitmap(editor.Width, editor.Height)) { editor.DrawToBitmap(bitmap, new Rectangle(Point.Empty, editor.Size)); bitmap.Save(Path.Combine(output, "organized-password-editor.png")); }
+                ((Button)editor.AcceptButton).PerformClick();
+                Check(editor.Value.LinkedEmailId == account.Id && editor.Value.UsesLinkedSignIn && editor.Value.Password == "", "Editor did not save organized sign-in data");
+            }
             const string password = "Test-only UI lock passphrase 2026!";
             AppAccess.SetPassword(null, password);
             using (var owner = new Desktop())

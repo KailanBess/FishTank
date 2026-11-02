@@ -31,6 +31,8 @@ jobs:
         run: |
           dotnet run --project tests/Logic/Logic.csproj
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --project tests/Browser/Browser.csproj
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           ./tests/Check-PowerShell.ps1
           ./tests/Test-Collectors.ps1
       - name: Windows security and UI checks

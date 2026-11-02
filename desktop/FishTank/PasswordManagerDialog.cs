@@ -64,7 +64,8 @@ public sealed class PasswordManagerDialog : Form
 		actions = new FlowLayoutPanel
 		{
 			Dock = DockStyle.Top,
-			Height = 115,
+			Height = 145,
+            AutoScroll = true,
 			WrapContents = true
 		};
 		Action action = delegate
@@ -81,7 +82,9 @@ public sealed class PasswordManagerDialog : Form
 		{
 			Edit(existing: false);
 		});
-		Add("Edit selected", delegate
+		Add("Add email account", () => Edit(false, "Email"));
+        Add("Add linked service", () => Edit(false, "Service", true));
+        Add("Edit selected", delegate
 		{
 			Edit(existing: true);
 		});
@@ -96,7 +99,7 @@ public sealed class PasswordManagerDialog : Form
 		search = new TextBox
 		{
 			Dock = DockStyle.Top,
-			AccessibleName = "Search vault by name, username or site",
+			AccessibleName = "Search vault by email, service, username or site",
 			BackColor = colors.Surface2,
 			ForeColor = colors.Text
 		};
@@ -125,7 +128,9 @@ public sealed class PasswordManagerDialog : Form
 		list.ColumnHeadersDefaultCellStyle.BackColor = colors.Surface2;
 		list.ColumnHeadersDefaultCellStyle.ForeColor = colors.Text;
 		list.Columns.Add("name", "Name");
-		list.Columns.Add("username", "Username");
+		list.Columns.Add("kind", "Type");
+        list.Columns.Add("email", "Email connection");
+        list.Columns.Add("username", "Service username");
 		list.Columns.Add("website", "Website / app");
 		list.Columns.Add("review", "Local password review");
 		list.CellDoubleClick += delegate(object s, DataGridViewCellEventArgs e)
@@ -330,12 +335,12 @@ public sealed class PasswordManagerDialog : Form
 		}
 		IList<PasswordEntry> entries = session.Entries;
 		string text = search.Text;
-		foreach (PasswordEntry e in entries)
+		foreach (PasswordEntry e in PasswordOrganization.Ordered(entries))
 		{
-			if ((e.Title + " " + e.Username + " " + e.Website).IndexOf(text, StringComparison.OrdinalIgnoreCase) >= 0)
+			if ((e.Title + " " + e.Username + " " + e.Website + " " + PasswordOrganization.EmailFor(e, entries) + " " + entries.FirstOrDefault(a => a.Id == e.LinkedEmailId)?.Title).IndexOf(text, StringComparison.OrdinalIgnoreCase) >= 0)
 			{
 				string text2 = ((e.Password.Length < 14) ? "Shorter than 14 characters" : "");
-				if (entries.Count((PasswordEntry other) => other.Password == e.Password) > 1)
+				if (e.Password != "" && entries.Count((PasswordEntry other) => other.Password == e.Password) > 1)
 				{
 					text2 = text2 + ((text2 == "") ? "" : " · ") + "Reused password";
 				}
@@ -343,7 +348,8 @@ public sealed class PasswordManagerDialog : Form
 				{
 					text2 = "No length/reuse flag (not a breach check)";
 				}
-				int index = list.Rows.Add(e.Title, e.Username, e.Website, text2);
+				if (e.UsesLinkedSignIn) text2 = "Linked sign-in · no separate password";
+                int index = list.Rows.Add((e.LinkedEmailId == "" ? "" : "↳ ") + e.Title, e.Kind, PasswordOrganization.EmailFor(e, entries), e.Username, e.Website, text2);
 				list.Rows[index].Tag = e.Id;
 			}
 		}
@@ -361,11 +367,16 @@ public sealed class PasswordManagerDialog : Form
 		return session.Entries.First((PasswordEntry e) => e.Id == id);
 	}
 
-	private void Edit(bool existing)
+	private void Edit(bool existing, string kind = "Service", bool link = false)
 	{
 		NeedUnlock();
-		PasswordEntry passwordEntry = (existing ? Selected() : new PasswordEntry());
-		using PasswordEditor passwordEditor = new PasswordEditor(passwordEntry, generator: false, colors);
+		PasswordEntry passwordEntry = (existing ? Selected() : new PasswordEntry { Kind = kind });
+        if (link) {
+            var selected = Selected();
+            passwordEntry.LinkedEmailId = selected.Kind == "Email" ? selected.Id : selected.LinkedEmailId;
+            if (passwordEntry.LinkedEmailId == "") throw new InvalidOperationException("Select an email account or one of its connections first.");
+        }
+		using PasswordEditor passwordEditor = new PasswordEditor(passwordEntry, generator: false, colors, session.Entries);
 		secretDialog = passwordEditor;
 		WireActivity(passwordEditor);
 		try
@@ -390,7 +401,8 @@ public sealed class PasswordManagerDialog : Form
 		PasswordEntry passwordEntry = Selected();
 		try
 		{
-			clipboard.Copy(passwordEntry.Password);
+			if (passwordEntry.UsesLinkedSignIn) throw new InvalidOperationException("This service uses linked sign-in. Open the linked email account when you need its credentials.");
+            clipboard.Copy(passwordEntry.Password);
 			state.Text = "Copied · Clipboard will be cleared after 30 seconds if it has not changed. Other apps can read a copied password.";
 		}
 		finally

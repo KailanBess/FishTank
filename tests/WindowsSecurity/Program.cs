@@ -39,6 +39,22 @@ internal static class Program
                 BackupHistory.Created(BackupHistory.PasswordVault, backup, vault.ContentSha256);
                 Reject<IOException>(() => vault.ExportEncrypted(backup), "Backup overwrite accepted");
             }
+            string legacyFile = Path.Combine(temp, "legacy.ftvault");
+            LegacyPasswordFixture.Write(legacyFile, pass);
+            using (var legacy = PasswordSession.Open(legacyFile, pass)) {
+                Check(legacy.Entries.Single().Kind == "Service" && legacy.Entries.Single().LinkedEmailId == "", "Native serializer failed legacy organization defaults");
+                legacy.Put(new PasswordEntry { Kind = "Email", Email = "fixture@example.test", Title = "Native email", Password = "Email fixture password!" });
+            }
+            using (var migrated = PasswordSession.Open(legacyFile, pass)) Check(migrated.Entries.Count == 2, "Native organized vault migration failed");
+            using (var webVault = new BrowserBackend(() => "{}", () => false)) {
+                webVault.Execute("/api/vault/create", Core.Json(new { Master = pass, Confirm = pass })).GetAwaiter().GetResult();
+                var email = new PasswordEntry { Kind = "Email", Email = "native@example.test", Title = "Native browser account", Password = "Native browser fixture password" };
+                webVault.Execute("/api/vault/save", Core.Json(email)).GetAwaiter().GetResult();
+                string details = webVault.Execute("/api/vault/get", Core.Json(new { Id = email.Id })).GetAwaiter().GetResult();
+                Check(Core.Parse<PasswordEntry>(details).Email == email.Email, "Native browser command deserialization failed");
+                string metadata = webVault.Execute("/api/vault/list", "{}").GetAwaiter().GetResult();
+                Check(!metadata.Contains(email.Password), "Native browser list leaked a password");
+            }
             string activeHash = DownloadChecksum.Compute(active);
             Check(BackupHistory.Status().Single(x => x.Name == "Password vault backup age").State == "No issue observed", "Newly created backup date was not recorded");
             var oldRecords = ProtectedStore.Read("backup-history", () => new System.Collections.Generic.List<BackupObservation>());

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><EnableDefaultCompileItems>true</EnableDefaultCompileItems></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../LegacyPasswordFixture.cs" Link="LegacyPasswordFixture.cs" />
+    <Compile Include="../../desktop/FishTank/BrowserSessionPolicy.cs" Link="BrowserSessionPolicy.cs" />
+    <Compile Include="../../desktop/FishTank/LocalBrowserServer.cs" Link="LocalBrowserServer.cs" />
+    <Compile Include="../../desktop/FishTank/BrowserBackend.cs" Link="BrowserBackend.cs" />
+    <Compile Include="../../desktop/FishTank/PasswordEntry.cs" Link="PasswordEntry.cs" />
+    <Compile Include="../../desktop/FishTank/PasswordPayload.cs" Link="PasswordPayload.cs" />
+    <Compile Include="../../desktop/FishTank/PasswordSession.cs" Link="PasswordSession.cs" />
+    <Compile Include="../../desktop/FishTank/PasswordOrganization.cs" Link="PasswordOrganization.cs" />
+    <Compile Include="../../desktop/FishTank/PasswordGenerator.cs" Link="PasswordGenerator.cs" />
+    <Compile Include="../../desktop/FishTank/GeneratorOptions.cs" Link="GeneratorOptions.cs" />
+    <EmbeddedResource Include="../../desktop/Browser/index.html" LogicalName="FishTank.Browser.index.html" />
+    <EmbeddedResource Include="../../desktop/Browser/app.js" LogicalName="FishTank.Browser.app.js" />
+    <EmbeddedResource Include="../../desktop/Browser/app.css" LogicalName="FishTank.Browser.app.css" />
+  </ItemGroup>
+</Project>

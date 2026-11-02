@@ -1,5 +1,7 @@
 using System;
 using System.Drawing;
+using System.Collections.Generic;
+using System.Linq;
 using System.Windows.Forms;
 
 namespace FishTank;
@@ -9,6 +11,10 @@ public sealed class PasswordEditor : Form
 	private TextBox title;
 
 	private TextBox username;
+	private TextBox email;
+	private ComboBox kind;
+	private ComboBox connection;
+	private CheckBox linkedSignIn;
 
 	private TextBox password;
 
@@ -34,7 +40,7 @@ public sealed class PasswordEditor : Form
 
 	private bool generator;
 
-	public PasswordEditor(PasswordEntry entry, bool generator, Palette colors)
+	public PasswordEditor(PasswordEntry entry, bool generator, Palette colors, IEnumerable<PasswordEntry> accounts = null)
 	{
 		PasswordEditor passwordEditor = this;
 		this.generator = generator;
@@ -64,19 +70,42 @@ public sealed class PasswordEditor : Form
 		panel.Controls.Add(tableLayoutPanel);
 		title = Field(Value.Title, 256, colors);
 		username = Field(Value.Username, 1024, colors);
+        email = Field(Value.Email, 320, colors);
+        kind = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, BackColor = colors.Surface2, ForeColor = colors.Text };
+        kind.Items.AddRange(new object[] { "Service", "Email" }); kind.SelectedItem = Value.Kind;
+        var emails = (accounts ?? Enumerable.Empty<PasswordEntry>()).Where(e => e.Kind == "Email" && e.Id != Value.Id).ToList();
+        connection = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, BackColor = colors.Surface2, ForeColor = colors.Text };
+        connection.Items.Add("No linked email"); foreach (var account in emails) connection.Items.Add(account.Email + " · " + account.Title);
+        connection.SelectedIndex = Math.Max(0, emails.FindIndex(e => e.Id == Value.LinkedEmailId) + 1);
+        linkedSignIn = Box("Sign in through linked account (no separate password)", Value.UsesLinkedSignIn);
 		website = Field(Value.Website, 2048, colors);
 		notes = Field(Value.Notes, 10000, colors);
 		notes.Multiline = true;
 		if (!generator)
 		{
-			Row(tableLayoutPanel, "Name", title, 50);
+			Row(tableLayoutPanel, "Account type", kind, 50);
+            Row(tableLayoutPanel, "Name / service", title, 50);
+            Row(tableLayoutPanel, "Email address", email, 50);
+            Row(tableLayoutPanel, "Email connection", connection, 50);
+            Row(tableLayoutPanel, "Sign-in method", linkedSignIn, 65);
 			Row(tableLayoutPanel, "Username", username, 50);
 			Row(tableLayoutPanel, "Website / app", website, 50);
 		}
 		password = Field(Value.Password, 65536, colors);
 		password.UseSystemPasswordChar = true;
 		Row(tableLayoutPanel, "Password", password, 50);
-		CheckBox reveal = new CheckBox
+		Action updateConnection = () => {
+            bool service = Convert.ToString(kind.SelectedItem) == "Service";
+            connection.Enabled = service; linkedSignIn.Enabled = service && connection.SelectedIndex > 0;
+            if (!linkedSignIn.Enabled) linkedSignIn.Checked = false;
+            email.Enabled = !service || connection.SelectedIndex == 0;
+            password.Enabled = !linkedSignIn.Checked;
+        };
+        kind.SelectedIndexChanged += delegate { updateConnection(); };
+        connection.SelectedIndexChanged += delegate { updateConnection(); };
+        linkedSignIn.CheckedChanged += delegate { updateConnection(); };
+        updateConnection();
+        CheckBox reveal = new CheckBox
 		{
 			Text = "Show password",
 			ForeColor = colors.Muted,
@@ -170,7 +199,13 @@ public sealed class PasswordEditor : Form
 			{
 				passwordEditor.Value.Title = (generator ? "Generated password" : passwordEditor.title.Text);
 				passwordEditor.Value.Username = passwordEditor.username.Text;
-				passwordEditor.Value.Password = passwordEditor.password.Text;
+                if (!generator) {
+                    Value.Kind = Convert.ToString(kind.SelectedItem);
+                    Value.LinkedEmailId = Value.Kind == "Service" && connection.SelectedIndex > 0 ? emails[connection.SelectedIndex - 1].Id : "";
+                    Value.Email = Value.LinkedEmailId == "" ? email.Text.Trim() : "";
+                    Value.UsesLinkedSignIn = linkedSignIn.Checked;
+                }
+				passwordEditor.Value.Password = !generator && linkedSignIn.Checked ? "" : passwordEditor.password.Text;
 				passwordEditor.Value.Website = passwordEditor.website.Text;
 				passwordEditor.Value.Notes = passwordEditor.notes.Text;
 				passwordEditor.Value.Validate();
@@ -198,6 +233,7 @@ public sealed class PasswordEditor : Form
 			password.Clear();
 			notes.Clear();
 			username.Clear();
+			email.Clear();
 		};
 	}
 
