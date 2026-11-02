@@ -1,0 +1,24 @@
+[Unit]
+Description=FishTank email and SMS verification
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=fishtank-mfa
+Group=fishtank-mfa
+WorkingDirectory=/opt/fishtank-mfa
+EnvironmentFile=/etc/fishtank-mfa/environment
+ExecStart=/opt/fishtank-mfa/venv/bin/waitress-serve --call --listen=127.0.0.1:8787 --threads=4 --connection-limit=64 --max-request-body-size=4096 server:create_app
+Restart=on-failure
+RestartSec=5
+UMask=0077
+StateDirectory=fishtank-mfa
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/fishtank-mfa
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

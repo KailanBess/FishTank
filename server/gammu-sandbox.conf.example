@@ -1,0 +1,7 @@
+# Install as /etc/systemd/system/fishtank-mfa.service.d/gammu.conf
+# Only after configuring the actual Gammu SMSD spool directory and access group.
+# This example assumes the package uses group "gammu" and /var/spool/gammu.
+# Check both on your server; do not make the queue world-writable.
+[Service]
+SupplementaryGroups=gammu
+ReadWritePaths=/var/spool/gammu

@@ -1,0 +1,9 @@
+# Replace the hostname. Install/configure Caddy separately; review before deployment.
+mfa.example.com {
+    request_body {
+        max_size 4KB
+    }
+    reverse_proxy 127.0.0.1:8787
+    header Cache-Control "no-store"
+    # No access log: never log tokens, request bodies or verification codes.
+}

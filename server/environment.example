@@ -1,0 +1,12 @@
+FISHTANK_DATABASE=/var/lib/fishtank-mfa/service.sqlite3
+FISHTANK_PEPPER=REPLACE_WITH_AT_LEAST_32_RANDOM_CHARACTERS
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_MODE=starttls
+SMTP_FROM=security@example.com
+SMTP_USER=REPLACE_LOCALLY
+SMTP_PASSWORD=REPLACE_LOCALLY
+# Optional: your own authenticated HTTPS SMS adapter. No SMS fallback is simulated.
+# SMS_GATEWAY_URL=https://sms.example.com/send
+# SMS_GATEWAY_TOKEN=REPLACE_LOCALLY
+

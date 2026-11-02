@@ -1,0 +1,9 @@
+# Root-owned /etc/fishtank-mfa/environment, mode 0600. No shell expansion.
+FISHTANK_DATABASE=/var/lib/fishtank-mfa/service.sqlite3
+FISHTANK_PEPPER=REPLACE_WITH_AT_LEAST_32_RANDOM_CHARACTERS
+# A local Postfix install must already be configured and able to deliver mail.
+EMAIL_TRANSPORT=postfix
+SMTP_FROM=security@REPLACE-WITH-YOUR-DOMAIN.example
+# A supported cellular modem, active SMS-capable SIM and working Gammu SMSD are required.
+SMS_TRANSPORT=gammu
+GAMMU_CONFIG=/etc/gammu-smsdrc
