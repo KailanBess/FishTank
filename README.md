@@ -4,7 +4,8 @@ Windows application builds and a self-hosted email/SMS verification backend.
 
 ## Files
 
-- [Windows desktop app](windows/FishTank.exe) and [CLI](windows/FishTank.Cli.exe): uploaded, unsigned development builds. Desktop source code is not included, so these binaries cannot be rebuilt from this repository.
+- [Windows desktop app](windows/FishTank.exe) and [CLI](windows/FishTank.Cli.exe): uploaded, unsigned development builds, preserved unchanged.
+- [Recovered desktop/CLI C# source](desktop/README.md): recovered from the uploaded assemblies and compiled successfully for .NET Framework 4.8. Read the recovery limitations before using rebuilt binaries.
 - [Server ZIP](packages/FishTank-server-selfhosted.zip): download using GitHub's **Download raw file** button, then copy it to Debian.
 - [Server source and installation instructions](server/README.md).
 - [Self-hosted Postfix/Gammu setup](server/SELF-HOSTED-SETUP.md).
