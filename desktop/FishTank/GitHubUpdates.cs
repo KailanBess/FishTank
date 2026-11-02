@@ -54,6 +54,7 @@ public static class GitHubUpdates
     public static string Check()
     {
         var release = Latest(); string version = GitHubReleasePolicy.Version(release.tag_name);
+        AppActivity.Record("Updates", "GitHub stable release metadata checked; installation is separate.");
         var installed = typeof(GitHubUpdates).Assembly.GetName().Version;
         if (System.Version.Parse(version) <= installed) return "GitHub's latest public stable release is " + version + ". No newer stable release was found for installed version " + installed + ".";
         return "GitHub advertises stable release " + version + " from " + GitHubReleasePolicy.Repository + ". It has NOT been verified yet. Download and verify checks both executables against GitHub digests and your trusted publisher pin before an installation can be offered.";
@@ -82,6 +83,7 @@ public static class GitHubUpdates
             var preferences = SecurityPreferences.Load();
             if (string.IsNullOrEmpty(preferences.PublisherCertificateSha256)) throw new InvalidOperationException("Set an independently verified publisher certificate SHA-256 pin in security preferences first. Unsigned previews cannot be installed as trusted updates.");
             var release = Latest(); string version = GitHubReleasePolicy.Version(release.tag_name);
+            AppActivity.Record("Updates", "GitHub stable release metadata checked; installation is separate.");
             UpdateVersionPolicy.RequireNewer(version, typeof(GitHubUpdates).Assembly.GetName().Version.ToString(), preferences.HighestStagedVersion);
             var staged = new System.Collections.Generic.List<StagedExecutable>();
             foreach (string name in new[] { "FishTank.exe", "FishTank.Cli.exe" })
@@ -91,6 +93,7 @@ public static class GitHubUpdates
                 try { Download(asset, temp); staged.Add(TrustedDownloads.StageCore(temp, asset.digest.Substring(7), version, name)); }
                 finally { if (File.Exists(temp)) File.Delete(temp); }
             }
+            AppActivity.Record("Updates", "GitHub release executables verified and staged; not installed.");
             ProtectedStore.Write("pending-github-update", new PendingGitHubUpdate { ReleaseId = release.id, Version = version, Files = staged.ToArray() });
             return "Both GitHub release executables passed checksum, publisher and version verification for " + version + ". They are staged; use Install verified GitHub update to close FishTank, replace only its executables, keep rollback copies and restart. User data is not replaced.";
         }

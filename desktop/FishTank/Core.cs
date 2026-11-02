@@ -280,6 +280,11 @@ public static class Core
 			Audit("scan-complete", anon);
 			return Json(anon);
 		}
+		catch (Exception ex)
+		{
+			Audit("scan-failed", new { kind, errorType = ex.GetType().Name });
+			throw;
+		}
 		finally
 		{
 			ScanGate.Release();

@@ -27,3 +27,5 @@ python3 -m unittest -v test_server test_transports
 ```
 
 These tests exercise SQLite verification state and simulated delivery interfaces; they do not send real email or SMS. Windows builds require Windows and have not been executed in this Linux workspace.
+
+Dashboard, scan scheduling, activity timeline, folder backup reminders, settings search and support-report controls are documented in [APP-INSIGHTS.md](docs/APP-INSIGHTS.md).

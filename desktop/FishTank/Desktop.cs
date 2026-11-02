@@ -13,7 +13,7 @@ using System.Windows.Forms;
 
 namespace FishTank;
 
-public sealed class Desktop : Form
+public sealed partial class Desktop : Form
 {
 	private Appearance appearance;
 
@@ -30,7 +30,7 @@ public sealed class Desktop : Form
 	private FolderMonitor monitor = new FolderMonitor();
 
 	private bool busy;
-	internal bool HasRunningOperation => busy;
+	internal bool HasRunningOperation => busy || (securityScheduler?.IsScanning ?? false);
 
 	private bool observing;
 
@@ -138,7 +138,7 @@ public sealed class Desktop : Form
 		liveDetection = new LiveDetectionSession(NotifyLiveDetection);
 		BuildShell();
 		appLock = new AppLockController(this, SetStatus);
-		securityScheduler = new SecurityScheduler(NotifySecurity);
+		securityScheduler = new SecurityScheduler(NotifySecurity, () => busy || Application.OpenForms.Cast<Form>().Any(form => form.Modal), ScheduledScanFinished);
 		liveDisplay = new System.Windows.Forms.Timer { Interval = 2000 };
 		liveDisplay.Tick += delegate { RefreshLiveDisplay(); browserBackend?.CheckIdle(); if (browser != null && !BrowserAccessAllowed()) LockBrowserSession(); }; liveDisplay.Start();
 		bool liveStarted = false;
@@ -159,7 +159,7 @@ public sealed class Desktop : Form
 				try { if (SecurityPreferences.Load().LiveDetectionKeepInTray) { e.Cancel = true; HideForLiveMonitoring(); return; } }
 				catch { e.Cancel = true; SetStatus("Background preference is unreadable. Use the explicit tray Exit command to stop FishTank."); return; }
 			}
-			if (e.CloseReason == CloseReason.UserClosing && !closingWhileLocked && busy && !Confirm("An operation is still running. Closing FishTank may leave the Windows operation running without its final application record. Close anyway?"))
+			if (e.CloseReason == CloseReason.UserClosing && !closingWhileLocked && HasRunningOperation && !Confirm("An operation is still running. Closing FishTank may leave the Windows operation running without its final application record. Close anyway?"))
 			{
 				e.Cancel = true; exitRequested = false;
 			}
@@ -861,6 +861,7 @@ public sealed class Desktop : Form
 		case "Antivirus":
 		{
 			Header("Antivirus", "Real scans, powered by the Microsoft Defender installed on this PC.");
+            AddScanScheduleSummary();
 			Surface surface2 = Card(210);
 			Label label3 = Label("Choose your scan", 18f, palette.Text);
 			label3.Font = Face(18f, FontStyle.Bold);
@@ -1061,6 +1062,7 @@ public sealed class Desktop : Form
 		case "Settings":
 		{
 			Header("Settings", "Choose a simple view or explore advanced tools.");
+            AddAppSettings();
 			AddViewControls();
             Note("Local browser dashboard", "Open FishTank in a browser on this PC. Pairing links last one minute and work once. Browser access locks with the app and after five minutes without an action. This does not expose a website to your network.");
             ActionRow(Button("Open browser dashboard", OpenBrowserDashboard, true), Button("Stop browser dashboard", StopBrowserDashboard, false));
@@ -1209,6 +1211,7 @@ public sealed class Desktop : Form
 	private void Dashboard()
 	{
 		Header("Your security, at a glance", "A calm place to check this PC and decide what needs attention.");
+        AddAttentionOverview();
 		AddViewControls();
 		if (liveDetection != null && liveDetection.Enabled)
 		{
@@ -1393,7 +1396,7 @@ public sealed class Desktop : Form
 
 	private async void StartWork(Func<string> action, string kind)
 	{
-		if (busy)
+		if (HasRunningOperation)
 		{
 			return;
 		}

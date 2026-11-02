@@ -48,11 +48,13 @@ public static class VerifiedUpdateFeed
     public static string Check()
     {
         var manifest = Read();
+        AppActivity.Record("Updates", "Configured release feed checked; installation is separate.");
         return "Release feed advertises version " + manifest.Version + " at " + RequireHttps(manifest.PackageUrl).Host + ". The package is NOT verified yet. Use Download and verify to check its checksum, publisher signature and version before staging.";
     }
     public static string DownloadAndStage()
     {
         var manifest = Read();
+        AppActivity.Record("Updates", "Configured release feed checked; installation is separate.");
         if (string.IsNullOrEmpty(SecurityPreferences.Load().PublisherCertificateSha256)) throw new InvalidOperationException("Configure the trusted publisher pin first; no package was downloaded.");
         string temp = Path.Combine(Core.Data, "release-download-" + Guid.NewGuid().ToString("N") + ".exe");
         try

@@ -58,6 +58,7 @@ internal static class BackupHistory
             return result;
         }
     }
+    internal static List<BackupObservation> Observations() { lock (Gate) return Read(); }
     internal static bool HasActivity()
     {
         lock (Gate) return Read().Count > 0 || System.IO.File.Exists(PasswordSession.DefaultPath);

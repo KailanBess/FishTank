@@ -50,6 +50,7 @@ internal static class Program
                 Check(overlay.IsDisposed, "Disposing the tank leaked its overlay");
                 host.Hide();
             }
+            InsightsUiChecks.Run(output, Check);
             string[] pages = { "Dashboard", "Antivirus", "Real-time monitoring", "Network Security", "System Integrity", "Security Center", "Quarantine", "Breach Checks", "Protected Files", "Password Manager", "Tailscale Devices", "Settings" };
             foreach (string theme in new[] { "Dark", "Light" })
             foreach (int scale in new[] { 100, 150 })

@@ -25,7 +25,7 @@ public sealed class SecurityToolsDialog : Form
     private readonly CheckBox recursive;
     private readonly Label folderName;
 
-    public SecurityToolsDialog(Palette colors, bool advanced, float textScale = 1f)
+    public SecurityToolsDialog(Palette colors, bool advanced, float textScale = 1f, string initialTab = null)
     {
         this.colors = colors;
         Text = "FishTank · Security and integrity tools";
@@ -39,6 +39,7 @@ public sealed class SecurityToolsDialog : Form
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 48));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         var tabs = new TabControl { Dock = DockStyle.Fill };
+        Shown += delegate { if (initialTab != null) foreach (TabPage tab in tabs.TabPages) if (tab.Text == initialTab) tabs.SelectedTab = tab; };
         layout.Controls.Add(tabs, 0, 0);
         var reviews = Page(tabs, "Security reviews", "Check Windows protection, startup changes, accounts, permissions and listening ports. Unknown or partial results never mean safe. Reviews save up to six encrypted snapshots per category on this Windows profile.");
         Add(reviews, "Protection health", () => Run(() => SecurityReviews.Run("SecurityHealth", false)));

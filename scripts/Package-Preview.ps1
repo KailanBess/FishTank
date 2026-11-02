@@ -16,6 +16,7 @@ try{
   'desktop/bin/Release/cli/net48/FishTank.Cli.exe',
   'desktop/bin/Release/cli/net48/FishTank.Cli.exe.config',
   'docs/UI-REVIEW.md',
+  'docs/APP-INSIGHTS.md',
   'docs/SECURITY-AND-INTEGRITY.md',
   'docs/PROTECTED-FILES-AND-GITHUB-UPDATES.md',
   'docs/DISK-HEALTH-AND-BACKUP-AGE.md',
@@ -37,6 +38,7 @@ Security Center > Security and integrity tools contains protection reviews, star
 Disk health and free space adds read-only device/capacity warnings; Backup and recovery shows recorded copy age separately from verification age. Read DISK-HEALTH-AND-BACKUP-AGE.md for thresholds, defaults and unknown-data limits.
 Monitoring adds optional live Defender event alerts, encrypted local history and a separate keep-in-tray option. Both monitoring and tray mode default off. Read LIVE-DETECTION.md for coverage and privacy limits.
 Settings > Open browser dashboard adds a local-only paired browser interface. Passwords now groups email accounts and connected services with separate usernames/passwords. Read BROWSER-AND-ACCOUNT-ORGANIZATION.md for the one-time Windows URL permission (if needed), session controls, and vault migration before editing an existing vault.
+Dashboard adds attention items and clear protection status. Antivirus adds optional scan scheduling. Settings adds folder backup reminders, settings search and an editable support report. Activity timeline combines local security events. Read APP-INSIGHTS.md for scope, defaults and limits.
 Simple view is the default. Advanced view adds evidence and controls without changing protection.
 
 This is not an audited or production-approved security release. Windows runtime and visual validation remain pending in the Linux build workspace; see SECURITY-AND-INTEGRITY.md for the exact checks and limits.

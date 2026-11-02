@@ -17,6 +17,7 @@ internal static class Program
         Directory.CreateDirectory(temp); Core.Data = temp; Core.Init();
         try
         {
+            AppInsightsChecks.Run(Check);
             var prefs = SecurityPreferences.Load();
             Check(prefs.IdleMinutes == 5 && prefs.LockWithWindows, "Safe lock defaults");
             SecurityPreferences.Save(prefs);

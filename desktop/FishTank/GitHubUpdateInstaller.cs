@@ -44,6 +44,7 @@ internal static class GitHubUpdateInstaller
             string powershell = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "WindowsPowerShell\\v1.0\\powershell.exe");
             Process.Start(new ProcessStartInfo(powershell, "-NoProfile -NonInteractive -EncodedCommand " + command) { UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = Core.Base });
         }
+        AppActivity.Record("Updates", "Verified GitHub installation helper started; check the installation result after restart.");
         AppAccess.Lock();
         foreach (var vault in Application.OpenForms.OfType<PasswordManagerDialog>().ToArray()) vault.LockForAppLock();
         foreach (var safe in Application.OpenForms.OfType<ProtectedFilesDialog>().ToArray()) safe.LockForAppLock();

@@ -40,6 +40,7 @@ public static class TrustedDownloads
     public static string StageUpdate(string path, string checksum, string expectedVersion = null)
     {
         var staged = StageCore(path, checksum, expectedVersion);
+        AppActivity.Record("Updates", "Update package verified and staged; not installed.");
         return "Verified update staged at " + staged.Path + ". It has NOT been run or installed. GitHub pair updates can be installed separately from the GitHub update controls.";
     }
     internal static StagedExecutable StageCore(string path, string checksum, string expectedVersion = null, string expectedName = null)
