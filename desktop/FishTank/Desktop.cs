@@ -39,6 +39,11 @@ public sealed class Desktop : Form
 	private bool closingWhileLocked;
 	private NotifyIcon securityIcon;
 	private bool resourcesDisposed;
+	private LiveDetectionSession liveDetection;
+	private System.Windows.Forms.Timer liveDisplay;
+	private Label liveCoverage;
+	private ContextMenuStrip trayMenu;
+	private bool exitRequested;
 
 	private string current = "Dashboard";
 
@@ -128,30 +133,45 @@ public sealed class Desktop : Form
 		catch
 		{
 		}
+		liveDetection = new LiveDetectionSession(NotifyLiveDetection);
 		BuildShell();
 		appLock = new AppLockController(this, SetStatus);
 		securityScheduler = new SecurityScheduler(NotifySecurity);
+		liveDisplay = new System.Windows.Forms.Timer { Interval = 2000 };
+		liveDisplay.Tick += delegate { RefreshLiveDisplay(); }; liveDisplay.Start();
+		bool liveStarted = false;
+		Shown += delegate {
+			if (liveStarted) return; liveStarted = true;
+			try { if (SecurityPreferences.Load().LiveDetectionEnabled) liveDetection.Start(); }
+			catch { SetStatus("Live alert preference could not be read. No listener was silently enabled."); }
+			RefreshLiveDisplay();
+		};
 		if (appearance.StartMaximized)
 		{
 			base.WindowState = FormWindowState.Maximized;
 		}
 		base.FormClosing += delegate(object s, FormClosingEventArgs e)
 		{
-			if (!closingWhileLocked && busy && !Confirm("An operation is still running. Closing FishTank may leave the Windows operation running without its final application record. Close anyway?"))
+			if (e.CloseReason == CloseReason.UserClosing && !closingWhileLocked && !exitRequested && liveDetection.Enabled)
 			{
-				e.Cancel = true;
+				try { if (SecurityPreferences.Load().LiveDetectionKeepInTray) { e.Cancel = true; HideForLiveMonitoring(); return; } }
+				catch { e.Cancel = true; SetStatus("Background preference is unreadable. Use the explicit tray Exit command to stop FishTank."); return; }
+			}
+			if (e.CloseReason == CloseReason.UserClosing && !closingWhileLocked && busy && !Confirm("An operation is still running. Closing FishTank may leave the Windows operation running without its final application record. Close anyway?"))
+			{
+				e.Cancel = true; exitRequested = false;
 			}
 		};
 	}
 
-	internal void CloseWhileLocked() { closingWhileLocked = true; ReturnToSignIn = false; Close(); }
+	internal void CloseWhileLocked() { exitRequested = true; closingWhileLocked = true; ReturnToSignIn = false; Close(); }
 
 	protected override void Dispose(bool disposing)
 	{
 		if (disposing && !resourcesDisposed)
 		{
 			resourcesDisposed = true;
-			appLock?.Dispose(); securityScheduler?.Dispose(); securityIcon?.Dispose();
+			liveDisplay?.Dispose(); liveDetection?.Dispose(); appLock?.Dispose(); securityScheduler?.Dispose(); securityIcon?.Dispose(); trayMenu?.Dispose();
 			monitor.Dispose(); tips.Dispose(); artwork?.Dispose(); displayArtwork?.Dispose(); ownedIcon?.Dispose();
 		}
 		base.Dispose(disposing);
@@ -164,10 +184,107 @@ public sealed class Desktop : Form
 		try
 		{
 			if (!SecurityPreferences.Load().DesktopNotifications) return;
-			if (securityIcon == null) securityIcon = new NotifyIcon { Icon = SystemIcons.Shield, Text = "FishTank security", Visible = true };
+			EnsureTray();
 			securityIcon.ShowBalloonTip(8000, "FishTank security", "A security reminder or integrity review needs attention. Open FishTank to review it.", ToolTipIcon.Info);
 		}
 		catch { /* The saved report/status remains available if Windows notifications are unavailable. */ }
+	}
+
+	private void EnsureTray()
+	{
+		if (securityIcon == null)
+		{
+			trayMenu = new ContextMenuStrip();
+			trayMenu.Items.Add("Show FishTank", null, delegate { RestoreFromTray(); });
+			trayMenu.Items.Add("Exit FishTank (stops live alerts)", null, delegate { RequestTrayExit(); });
+			securityIcon = new NotifyIcon { Icon = SystemIcons.Shield, Text = "FishTank", ContextMenuStrip = trayMenu };
+			securityIcon.DoubleClick += delegate { RestoreFromTray(); };
+		}
+		securityIcon.Visible = true;
+	}
+
+	private void RefreshLiveDisplay()
+	{
+		if (IsDisposed || liveDetection == null) return;
+		if (liveCoverage != null && !liveCoverage.IsDisposed) liveCoverage.Text = liveDetection.Status;
+		if (liveDetection.Enabled || appLock?.IsParked == true)
+		{
+			EnsureTray();
+			string text = liveDetection.Enabled ? "FishTank · " + liveDetection.Status : "FishTank · live alerts off";
+			securityIcon.Text = text.Length > 63 ? text.Substring(0, 63) : text;
+		}
+		else if (securityIcon != null)
+		{
+			try { securityIcon.Visible = SecurityPreferences.Load().DesktopNotifications; }
+			catch { securityIcon.Visible = false; }
+		}
+	}
+
+	private void NotifyLiveDetection(LiveDetectionEvent item)
+	{
+		if (IsDisposed || !IsHandleCreated) return;
+		try { BeginInvoke((Action)delegate {
+			if (IsDisposed || !liveDetection.Enabled) return;
+			SetStatus("Live Defender alert: " + item.Kind + ". Open Monitoring to review the source evidence.");
+			RefreshLiveDisplay();
+			try { if (SecurityPreferences.Load().LiveDetectionNotifications) { EnsureTray(); securityIcon.ShowBalloonTip(8000, "FishTank · Defender activity", "Defender activity or a monitoring coverage gap needs review. Open FishTank → Monitoring. No file paths are shown in notifications.", ToolTipIcon.Warning); } }
+			catch { /* Event history and coverage status remain available. */ }
+		}); } catch (InvalidOperationException) { }
+	}
+
+	private void HideForLiveMonitoring()
+	{
+		if (Application.OpenForms.Cast<Form>().Any(form => form != this && form.Visible)) { SetStatus("Close the current dialog before hiding FishTank to the tray. Authorized main-window work can continue in the background."); return; }
+		EnsureTray(); appLock.ParkInTray(); Hide();
+	}
+
+	private void RestoreFromTray()
+	{
+		if (IsDisposed) return;
+		if (appLock.IsParked) { if (!appLock.RestoreFromTray() || IsDisposed) return; }
+		else if (appLock.IsLocked)
+		{
+			Application.OpenForms.Cast<Form>().OfType<AppUnlockDialog>().FirstOrDefault()?.Activate(); return;
+		}
+		WindowState = FormWindowState.Normal; Show(); Activate(); RefreshLiveDisplay();
+	}
+
+	private void RequestTrayExit()
+	{
+		if (IsDisposed) return;
+		if (Application.OpenForms.Cast<Form>().Any(form => form != this && form.Visible)) { SetStatus("Close the current dialog before exiting FishTank."); return; }
+		if (!busy && liveDetection.Enabled && !Confirm("Exit FishTank and stop its live alert listener? Microsoft's existing protection remains independent. Events while FishTank is off may be missing from its history.")) return;
+		exitRequested = true; Close();
+	}
+
+	private void SetLiveEnabled(bool enabled)
+	{
+		SecurityPreferences.Update(p => p.LiveDetectionEnabled = enabled);
+		try { if (enabled) liveDetection.Start(); else liveDetection.Stop(); }
+		finally { RefreshLiveDisplay(); }
+		RenderPage();
+	}
+
+	private void LiveMonitoringControls()
+	{
+		Surface coverage = Card((int)TextSize(140f));
+		liveCoverage = Label(liveDetection?.Status ?? "Off · live alerts are disabled.", 11f, palette.Text); liveCoverage.Dock = DockStyle.Fill;
+		coverage.Controls.Add(liveCoverage); AddBlock(coverage, (int)TextSize(140f));
+		Note("Live alerts are optional", "FishTank listens for Microsoft Defender detections, actions, ASR/controlled-folder events and protection changes. It does not detect every threat, scan encrypted/offline contents, or monitor every antivirus product. Defender's own exclusions and policy still apply. Nothing here enables/disables Windows protection or automatically deletes files. Closing FishTank normally stops this listener; optional tray mode keeps the process visibly running after closing its window.");
+		ActionRow(Button("Start live Defender alerts", () => SetLiveEnabled(true), true, true), Button("Stop live Defender alerts", () => SetLiveEnabled(false), false, true),
+			Button("Review live alert history", delegate { using (var history = new LiveDetectionDialog(liveDetection, palette, appearance.AdvancedMode)) { history.Icon = Icon; history.ShowDialog(this); } }, false, true),
+			Button("Open Windows Security", () => Process.Start(new ProcessStartInfo("windowsdefender:") { UseShellExecute = true }), false, true));
+		try
+		{
+			var preferences = SecurityPreferences.Load();
+			var keep = new CheckBox { Text = "Keep running in tray when window closes", Checked = preferences.LiveDetectionKeepInTray, AutoSize = true, ForeColor = palette.Text, AccessibleName = "Keep optional live alerts in the tray when closing the window" };
+			var notifications = new CheckBox { Text = "Show live alert Windows notifications", Checked = preferences.LiveDetectionNotifications, AutoSize = true, ForeColor = palette.Text, AccessibleName = "Enable generic live alert notifications" };
+			bool sync = false; bool previousKeep = keep.Checked, previousNotifications = notifications.Checked;
+			keep.CheckedChanged += delegate { if (sync) return; try { SecurityPreferences.Update(p => p.LiveDetectionKeepInTray = keep.Checked); previousKeep = keep.Checked; } catch { sync = true; keep.Checked = previousKeep; sync = false; SetStatus("Background preference could not be saved; previous setting remains in use."); } };
+			notifications.CheckedChanged += delegate { if (sync) return; try { SecurityPreferences.Update(p => p.LiveDetectionNotifications = notifications.Checked); previousNotifications = notifications.Checked; } catch { sync = true; notifications.Checked = previousNotifications; sync = false; SetStatus("Live notification preference could not be saved."); } };
+			ActionRow(keep); ActionRow(notifications);
+		}
+		catch { Note("Monitoring preferences unknown", "Preferences could not be read. No background setting was silently enabled."); }
 	}
 
 	protected override bool ProcessCmdKey(ref Message message, Keys keys)
@@ -345,7 +462,7 @@ public sealed class Desktop : Form
 		}
 		panel4.AutoScrollMinSize = new Size(0, num);
 		UpdateNavigation(panel4);
-		Label label3 = Label("WINDOWS SECURITY COMPANION\nDevelopment preview · 0.8.1", 8f, palette.Muted);
+		Label label3 = Label("WINDOWS SECURITY COMPANION\nDevelopment preview · 0.9.0", 8f, palette.Muted);
 		label3.Dock = DockStyle.Bottom;
 		label3.Height = (int)TextSize(52f);
 		label3.Visible = appearance.ShowFooter;
@@ -750,7 +867,10 @@ public sealed class Desktop : Form
 			break;
 		}
 		case "Real-time monitoring":
-			Header("Monitoring", "Keep Windows protection visible. Observe a folder when you need more context.");
+			Header("Monitoring", "Optional live Defender alerts, with visible background controls.");
+			LiveMonitoringControls();
+			if (appearance.AdvancedMode)
+			{
 			Note(observing ? "Folder observer is running" : "Folder observer is off", "The optional observer watches one folder without subfolders. File bursts create low-confidence alerts; this does not block ransomware or replace Defender.");
 			ActionRow(Button("Observe a folder", delegate
 			{
@@ -776,6 +896,8 @@ public sealed class Desktop : Form
 			{
 				StartWork(Core.History, "History");
 			}, primary: false));
+			}
+
 			break;
 		case "Network Security":
 			Header("Network", "Understand this PC’s connections, firewall profiles and DNS configuration.");
@@ -1044,6 +1166,11 @@ public sealed class Desktop : Form
 	{
 		Header("Your security, at a glance", "A calm place to check this PC and decide what needs attention.");
 		AddViewControls();
+		if (liveDetection != null && liveDetection.Enabled)
+		{
+			Note("Live Defender alerts", liveDetection.Status);
+			ActionRow(Button("Open live monitoring", () => Navigate("Real-time monitoring"), false));
+		}
 		try
 		{
 			var storage = new List<string>();
@@ -1064,7 +1191,7 @@ public sealed class Desktop : Form
 		}
 		if (!appearance.AdvancedMode)
 		{
-			Note("Start here", "1. Check this device to review Windows protection.\n2. Run a quick scan when you want Defender to inspect common locations.\n3. Set an app password in Settings, then add an authenticator and save recovery codes privately.\nAdvanced view adds monitoring, network inventory, manual quarantine and repair tools. No settings change just by switching views.");
+			Note("Start here", "1. Check this device to review Windows protection.\n2. Run a quick scan when you want Defender to inspect common locations.\n3. Set an app password in Settings, then add an authenticator and save recovery codes privately.\nAdvanced view adds folder activity observation, network inventory, manual quarantine and repair tools. No settings change just by switching views.");
 			ActionRow(Button("Quick scan", () => RequestScan("Quick"), true),
 				Button("Security checklist", () => Navigate("Security Center"), false),
 				Button("Protect app access", () => Navigate("Settings"), false));

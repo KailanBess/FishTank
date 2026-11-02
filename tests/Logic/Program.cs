@@ -23,9 +23,9 @@ try {
     Check(DownloadChecksum.Compute(path) == "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855", "Empty download vector");
     foreach (var bad in new[] { "", "abc", new string('G', 64), digest + "extra", "file.exe " + digest, digest.Substring(1) })
         Reject(() => DownloadChecksum.Normalize(bad), "Malformed checksum accepted");
-    foreach (var page in new[] { "Dashboard", "Antivirus", "Security Center", "Breach Checks", "Protected Files", "Password Manager", "Settings" })
+    foreach (var page in new[] { "Dashboard", "Antivirus", "Real-time monitoring", "Security Center", "Breach Checks", "Protected Files", "Password Manager", "Settings" })
         Check(NavigationPolicy.IsVisible(page, false), "Essential page hidden: " + page);
-    foreach (var page in new[] { "Real-time monitoring", "Network Security", "System Integrity", "Quarantine", "Tailscale Devices" }) {
+    foreach (var page in new[] { "Network Security", "System Integrity", "Quarantine", "Tailscale Devices" }) {
         Check(!NavigationPolicy.IsVisible(page, false), "Advanced page exposed: " + page);
         Check(NavigationPolicy.IsVisible(page, true), "Advanced page unreachable: " + page);
     }
@@ -149,5 +149,39 @@ try {
     Check(BackupAgePolicy.Assess("Vault", DateTime.MinValue.AddHours(6), DateTime.MinValue.AddHours(6), backupNow, 7).State == "Unknown", "Timezone-adjusted empty date treated as a real backup");
     Reject(() => BackupAgePolicy.Assess("Vault", backupNow, backupNow, backupNow, 0), "Zero backup age allowed");
     Reject(() => BackupAgePolicy.Assess("Vault", backupNow, backupNow, backupNow, 366), "Oversized backup age allowed");
+    var goodProtection = new LiveProtectionReading { AntivirusEnabled = true, RealTimeProtectionEnabled = true, Mode = "Normal" };
+    Check(LiveDetectionPolicy.Coverage(false, true, goodProtection, backupNow, backupNow).StartsWith("Off"), "Optional live monitoring enabled by status alone");
+    Check(LiveDetectionPolicy.Coverage(true, false, goodProtection, backupNow, backupNow).Contains("Coverage gap"), "Missing event subscription reported protection");
+    Check(LiveDetectionPolicy.Coverage(true, true, null, backupNow, backupNow).Contains("unknown"), "Missing protection data reported on");
+    Check(LiveDetectionPolicy.Coverage(true, true, goodProtection, backupNow.AddMinutes(-4), backupNow).Contains("unknown"), "Stale protection reading trusted");
+    Check(LiveDetectionPolicy.Coverage(true, true, goodProtection, backupNow.AddSeconds(1), backupNow).Contains("unknown"), "Future protection reading trusted");
+    Check(LiveDetectionPolicy.Coverage(true, true, goodProtection, backupNow, backupNow).Contains("not guaranteed"), "Live coverage promised complete detection");
+    goodProtection.RealTimeProtectionEnabled = false;
+    Check(LiveDetectionPolicy.Coverage(true, true, goodProtection, backupNow, backupNow).Contains("warning"), "Real-time protection off was missed");
+    goodProtection.Mode = "Passive Mode";
+    Check(LiveDetectionPolicy.Coverage(true, true, goodProtection, backupNow, backupNow).Contains("limited"), "Passive Defender mode reported full coverage");
+    goodProtection.Mode = "Normal"; goodProtection.RealTimeProtectionEnabled = null;
+    Check(LiveDetectionPolicy.Coverage(true, true, goodProtection, backupNow, backupNow).Contains("unknown"), "Missing real-time status inferred healthy");
+    Check(LiveDetectionPolicy.Kind(1116) == "Defender detection", "Defender detection classification wrong");
+    Check(LiveDetectionPolicy.Kind(1118) == "Defender action failed", "Failed remediation was missed");
+    Check(LiveDetectionPolicy.Kind(5001) == "Protection disabled", "Disabled-protection event missed");
+    Check(LiveDetectionPolicy.Kind(9999) == null, "Unknown event invented a threat");
+    Check(LiveDetectionPolicy.Summary(1122).Contains("does not block") && LiveDetectionPolicy.Summary(1124).Contains("does not mean access was blocked"), "Audit events were described as blocks");
+    Check(LiveDetectionPolicy.Summary(5007).Contains("not proof of intrusion"), "Configuration changes called intrusions");
+    var liveBuffer = new LiveDetectionBuffer(3);
+    var reported = new LiveDetectionEvent { RecordId = 10, EventId = 1116, RecordedUtc = backupNow, EventUtc = backupNow, Kind = "Defender detection", Summary = "Fixture" };
+    Check(liveBuffer.Add(reported) && !liveBuffer.Add(reported), "Duplicate live records were not suppressed");
+    liveBuffer.Add(new LiveDetectionEvent { RecordId = 11, EventId = 1117, RecordedUtc = backupNow.AddSeconds(1), EventUtc = backupNow.AddSeconds(1), Kind = "Defender action" });
+    liveBuffer.Add(new LiveDetectionEvent { RecordId = 2, EventId = 1116, RecordedUtc = backupNow.AddSeconds(2), EventUtc = backupNow.AddSeconds(2), Kind = "Defender detection" });
+    Check(liveBuffer.Snapshot().Count == 3 && liveBuffer.Snapshot().Any(x => x.Kind == "Coverage gap"), "Log reset/reordering gap missing or history unbounded");
+    var retained = liveBuffer.Snapshot(); liveBuffer.Restore(retained);
+    Check(liveBuffer.Snapshot().Count == retained.Count, "Restoring history invented extra gaps");
+    liveBuffer.Snapshot()[0].Summary = "mutated external copy";
+    Check(liveBuffer.Snapshot()[0].Summary != "mutated external copy", "History snapshot exposed mutable internal records");
+    string selectedDetails = LiveDetectionDetails.Read("<Event><EventData><Data Name='Threat Name'>FixtureThreat</Data><Data Name='Path'>C:\\Fixture.txt</Data><Data Name='User'>PRIVATE_FIXTURE_USERNAME</Data></EventData></Event>");
+    Check(selectedDetails.Contains("FixtureThreat") && selectedDetails.Contains("Fixture.txt") && !selectedDetails.Contains("PRIVATE_FIXTURE_USERNAME"), "Event detail allowlist failed");
+    Check(LiveDetectionDetails.Read("<!DOCTYPE Event [<!ENTITY sample SYSTEM 'file:///never-read-fixture'>]><Event><EventData><Data Name='Path'>&sample;</Data></EventData></Event>").Contains("safely parsed"), "External XML entity was allowed");
+    Check(LiveDetectionDetails.Read(new string('X', 65537)).Contains("size limit"), "Oversized event XML accepted");
+    Check(LiveDetectionDetails.Read("<broken").Contains("safely parsed"), "Malformed event XML was not handled");
     Console.WriteLine($"{count} checks passed.");
 } finally { File.Delete(path); }

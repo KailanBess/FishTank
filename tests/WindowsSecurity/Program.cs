@@ -22,6 +22,7 @@ internal static class Program
             SecurityPreferences.Save(prefs);
             SecurityPreferences.Update(p => p.Reminders = true);
             Check(SecurityPreferences.Load().Reminders, "Encrypted preferences round trip");
+            Check(!SecurityPreferences.Load().LiveDetectionEnabled && !SecurityPreferences.Load().LiveDetectionKeepInTray, "Live background monitoring was enabled by default");
             var stored = File.ReadAllBytes(Path.Combine(temp, "security-preferences.dpapi"));
             Check(!System.Text.Encoding.UTF8.GetString(stored).Contains("PublisherCertificateSha256"), "Preferences stored as plaintext");
             byte[] corrupt = (byte[])stored.Clone(); corrupt[corrupt.Length / 2] ^= 1;
@@ -92,6 +93,13 @@ internal static class Program
             Check(disks.Items.Count > 0 && disks.Items.All(x => new[] { "Unknown", "Review", "No issue observed" }.Contains(x.State)), "Disk collector did not return bounded health/unknown evidence");
             string summary = SecurityToolsDialog.Summarize(Core.Json(new[] { new EvidenceItem { Name = "Fixture", State = "Unknown", Value = "Fixture unavailable" } }));
             Check(summary.Contains("unknown") && summary.Contains("full evidence"), "Simple summary hid unknown status or evidence access");
+            using (var live = new LiveDetectionSession(null))
+            {
+                Check(!live.Enabled && live.Status.StartsWith("Off"), "Live listener started without opt-in");
+                live.Start(); Check(live.Enabled, "Live session did not record requested start");
+                live.Stop(); Check(!live.Enabled && live.Status.StartsWith("Off"), "Stopping live session did not leave it off");
+                Check(live.Events().Any(x => x.Kind == "Session started") && live.Events().Any(x => x.Kind == "Session stopped"), "Live start/stop history missing");
+            }
             string personal = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "FishTank-safe-fixture-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(personal);
             try

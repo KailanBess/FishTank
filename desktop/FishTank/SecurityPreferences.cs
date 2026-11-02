@@ -11,6 +11,9 @@ public sealed class SecurityPreferences
     public bool Reminders;
     public bool DesktopNotifications;
     public bool CheckGitHubOnStartup;
+    public bool LiveDetectionEnabled;
+    public bool LiveDetectionKeepInTray;
+    public bool LiveDetectionNotifications = true;
     public int ReminderDays = 7;
     public int BackupAgeDays = 7;
     public bool BackupAgeWarnings = true;

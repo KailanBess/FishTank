@@ -39,7 +39,7 @@ Optional startup checking is opt-in in **Locking and reminders** and only checks
 
 ### Activation still requires a real signed release
 
-The development preview is unsigned. No publisher certificate/private key is supplied or invented. Unsigned previews cannot pass the update gate, and an encountered certificate is never automatically trusted. Configure the publisher pin from an authenticated publisher source. A first signed update must have a higher assembly version than the installed preview (for example, 0.8.2.0 after the 0.8.1 preview).
+The development preview is unsigned. No publisher certificate/private key is supplied or invented. Unsigned previews cannot pass the update gate, and an encountered certificate is never automatically trusted. Configure the publisher pin from an authenticated publisher source. A first signed update must have a higher assembly version than the installed preview (for example, 0.9.1.0 after the 0.9.0 preview).
 
 `.github/workflows/release.yml` prepares signed release publication after tests on a stable version tag or manual dispatch. In GitHub **Settings → Environments → release**, configure these securely:
 

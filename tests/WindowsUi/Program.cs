@@ -46,7 +46,7 @@ internal static class Program
                         navigate.Invoke(form, new object[] { "Dashboard" });
                         navigate.Invoke(form, new object[] { page });
                         var navigation = Descendants(form).OfType<CleanButton>().Where(b => b.Tag is string).ToArray();
-                        Check(navigation.Length == (advanced ? 12 : 7), "Incorrect navigation count");
+                        Check(navigation.Length == (advanced ? 12 : 8), "Incorrect navigation count");
                         var colors = Palette.From(appearance);
                         foreach (var button in navigation)
                         {
@@ -81,6 +81,15 @@ internal static class Program
                         }
                     }
                     tools.Hide();
+                }
+                using (var live = new LiveDetectionSession(null))
+                using (var history = new LiveDetectionDialog(live, Palette.From(appearance), advanced))
+                {
+                    history.Size = new Size(800, 620); history.StartPosition = FormStartPosition.Manual;
+                    history.Location = new Point(-30000, -30000); history.ShowInTaskbar = false; history.Show(); Application.DoEvents();
+                    Check(!live.Enabled, "Opening history silently enabled detection");
+                    using (var bitmap = new Bitmap(history.Width, history.Height)) { history.DrawToBitmap(bitmap, new Rectangle(Point.Empty, history.Size)); bitmap.Save(Path.Combine(output, $"live-{theme}-{scale}-{advanced}.png")); }
+                    history.Hide();
                 }
                 using (var safe = new ProtectedFilesDialog(Palette.From(appearance)))
                 {
@@ -122,6 +131,12 @@ internal static class Program
                 responder.Stop();
                 if (failure != null) throw failure;
                 Check(submitted && AppAccess.SessionUnlocked && owner.Visible && vault.Visible, "App did not restore its UI after verified sign-in");
+                controller.ParkInTray(); owner.Hide(); vault.Hide();
+                Check(controller.IsParked && controller.IsLocked && !AppAccess.SessionUnlocked, "Background parking left app access unlocked");
+                submitted = false; failure = null; responder.Start();
+                bool restored = controller.RestoreFromTray(); responder.Stop();
+                if (failure != null) throw failure;
+                Check(restored && submitted && AppAccess.SessionUnlocked && !controller.IsParked, "Tray restore skipped or failed sign-in");
             }
             Console.WriteLine(checks + " Windows UI checks passed; inspect PNGs for text clipping, focus, and spacing.");
             return 0;

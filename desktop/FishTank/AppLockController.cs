@@ -14,7 +14,9 @@ internal sealed class AppLockController : IMessageFilter, IDisposable
     private DateTime lastActivity = DateTime.UtcNow;
     private bool locking;
     private bool disposed;
-    internal bool IsLocked => locking;
+    private bool parked;
+    internal bool IsLocked => locking || parked;
+    internal bool IsParked => parked;
 
     internal AppLockController(Desktop owner, Action<string> status)
     {
@@ -22,7 +24,7 @@ internal sealed class AppLockController : IMessageFilter, IDisposable
         Application.AddMessageFilter(this);
         SystemEvents.SessionSwitch += SessionChanged;
         timer.Tick += delegate {
-            if (locking || !AppAccess.Enabled) return;
+            if (locking || parked || !AppAccess.Enabled) return;
             if (!AppAccess.SessionUnlocked) { Lock(); return; }
             int minutes = 5;
             try { minutes = SecurityPreferences.Load().IdleMinutes; }
@@ -55,6 +57,7 @@ internal sealed class AppLockController : IMessageFilter, IDisposable
     internal void Lock()
     {
         if (locking || disposed) return;
+        if (parked) { LockVaults(); if (AppAccess.Enabled) AppAccess.Lock(); return; }
         if (!AppAccess.Enabled)
         {
             foreach (var vault in Application.OpenForms.OfType<PasswordManagerDialog>().ToArray()) vault.LockForAppLock();
@@ -101,6 +104,24 @@ internal sealed class AppLockController : IMessageFilter, IDisposable
             }
             locking = false;
         }
+    }
+    private static void LockVaults()
+    {
+        foreach (var vault in Application.OpenForms.OfType<PasswordManagerDialog>().ToArray()) vault.LockForAppLock();
+        foreach (var safe in Application.OpenForms.OfType<ProtectedFilesDialog>().ToArray()) safe.LockForAppLock();
+    }
+    internal void ParkInTray()
+    {
+        if (disposed || locking) return;
+        LockVaults(); if (AppAccess.Enabled) AppAccess.Lock(); parked = true;
+    }
+    internal bool RestoreFromTray()
+    {
+        if (!parked || disposed) return !disposed && !locking;
+        parked = false;
+        if (AppAccess.Enabled) Lock();
+        lastActivity = DateTime.UtcNow;
+        return !disposed && (!AppAccess.Enabled || AppAccess.SessionUnlocked);
     }
     public void Dispose()
     {

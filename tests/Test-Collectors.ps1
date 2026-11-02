@@ -3,6 +3,8 @@ $global:FishTankFixtureRealtime=$true
 $global:FishTankFixtureSignatureAge=0
 $global:FishTankFixtureBoot=$true
 $global:FishTankFixtureTasksUnavailable=$false
+$global:FishTankFixtureStatusUnavailable=$false
+$global:FishTankFixtureMode='Normal'
 $global:FishTankFixtureDiskHealth='Healthy'
 $global:FishTankFixtureDiskOps=@('OK')
 $global:FishTankFixtureWear=10
@@ -12,7 +14,7 @@ $global:FishTankFixtureFree=50GB
 $global:FishTankFixtureVolumeSize=100GB
 $script:checks=0
 function Assert($Condition,[string]$Name){if(!$Condition){throw $Name};$script:checks++}
-function Get-MpComputerStatus{[pscustomobject]@{RealTimeProtectionEnabled=$global:FishTankFixtureRealtime;AMRunningMode='Normal';AntivirusSignatureAge=$global:FishTankFixtureSignatureAge;AntivirusSignatureVersion='fixture'}}
+function Get-MpComputerStatus{if($global:FishTankFixtureStatusUnavailable){throw 'Fixture Defender unavailable'};[pscustomobject]@{AntivirusEnabled=$true;RealTimeProtectionEnabled=$global:FishTankFixtureRealtime;AMRunningMode=$global:FishTankFixtureMode;AntivirusSignatureAge=$global:FishTankFixtureSignatureAge;AntivirusSignatureVersion='fixture'}}
 function Get-NetFirewallProfile{[pscustomobject]@{Name='Private';Enabled=$true}}
 function Confirm-SecureBootUEFI{if($null -eq $global:FishTankFixtureBoot){throw 'Fixture access denied'};$global:FishTankFixtureBoot}
 function Get-BitLockerVolume{param($MountPoint);[pscustomobject]@{ProtectionStatus=1;VolumeStatus='FullyEncrypted'}}
@@ -74,4 +76,19 @@ $disk=& $collector -Mode DiskHealth | ConvertFrom-Json
 Assert (($disk | Where-Object Name -eq 'Disk 0 Fixture SSD temperature').State -eq 'Unknown') 'Missing/sentinel temperature reported healthy'
 Assert (($disk | Where-Object Name -eq 'Disk 0 Fixture SSD reported wear used').State -eq 'Unknown') 'Invalid wear reported healthy'
 Assert (($disk | Where-Object Name -eq 'Volume Z: free space').State -eq 'No issue observed') 'Free space boundary misclassified'
+$global:FishTankFixtureRealtime=$true
+$live=& $collector -Mode LiveProtection | ConvertFrom-Json
+Assert ($live.Count -eq 1 -and $live[0].RealTimeProtectionEnabled -eq $true -and $live[0].AntivirusEnabled -eq $true) 'Live readiness flags were not preserved'
+$global:FishTankFixtureRealtime=$false
+$live=& $collector -Mode LiveProtection | ConvertFrom-Json
+Assert ($live[0].RealTimeProtectionEnabled -eq $false) 'Disabled real-time status was coerced on'
+$global:FishTankFixtureRealtime=$null
+$live=& $collector -Mode LiveProtection | ConvertFrom-Json
+Assert ($null -eq $live[0].RealTimeProtectionEnabled) 'Missing real-time status was coerced to a known value'
+$global:FishTankFixtureMode='Passive Mode'
+$live=& $collector -Mode LiveProtection | ConvertFrom-Json
+Assert ($live[0].Mode -eq 'Passive Mode') 'Passive antivirus mode was hidden'
+$global:FishTankFixtureStatusUnavailable=$true
+$live=& $collector -Mode LiveProtection | ConvertFrom-Json
+Assert ($null -eq $live[0].RealTimeProtectionEnabled -and $live[0].Error) 'Unavailable Defender status was reported active'
 Write-Host "$script:checks collector fixture checks passed; no Windows security configuration changed."

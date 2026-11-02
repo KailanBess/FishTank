@@ -1,4 +1,4 @@
-param([ValidateSet('Health','Network','Persistence','Events','Tailscale','Hardening','Accounts','Browsers','ScanPolicy','SecurityHealth','StartupInventory','Permissions','Exposure','DiskHealth')][string]$Mode='Health')
+param([ValidateSet('Health','Network','Persistence','Events','Tailscale','Hardening','Accounts','Browsers','ScanPolicy','SecurityHealth','StartupInventory','Permissions','Exposure','DiskHealth','LiveProtection')][string]$Mode='Health')
 $ErrorActionPreference='Stop'
 $ProgressPreference='SilentlyContinue'
 function Read-Check($Name,[scriptblock]$Read) {
@@ -23,6 +23,15 @@ function Get-TextHash([string]$Text) {
 }
 $result = switch($Mode) {
 
+
+
+ 'LiveProtection' {
+  try {
+   $protection=Get-MpComputerStatus
+   if($null -eq $protection){throw 'No Defender status returned.'}
+   [pscustomobject]@{AntivirusEnabled=$protection.AntivirusEnabled;RealTimeProtectionEnabled=$protection.RealTimeProtectionEnabled;Mode=[string]$protection.AMRunningMode;Error=$null}
+  }catch{[pscustomobject]@{AntivirusEnabled=$null;RealTimeProtectionEnabled=$null;Mode=$null;Error='Defender status unavailable; no settings were changed.'}}
+ }
 
  'DiskHealth' {
   try {

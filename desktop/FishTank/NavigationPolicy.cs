@@ -4,7 +4,7 @@ public static class NavigationPolicy
 {
 	public static bool IsVisible(string page, bool advanced)
 	{
-		return advanced || page == "Dashboard" || page == "Antivirus" || page == "Security Center"
+		return advanced || page == "Dashboard" || page == "Antivirus" || page == "Real-time monitoring" || page == "Security Center"
 			|| page == "Breach Checks" || page == "Protected Files" || page == "Password Manager" || page == "Settings";
 	}
 }
