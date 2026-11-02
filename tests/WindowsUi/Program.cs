@@ -27,6 +27,29 @@ internal static class Program
         SimpleExplanations.Install();
         try
         {
+            using (var host = new Form { Bounds = new Rectangle(100, 300, 400, 300), ShowInTaskbar = false })
+            using (var tank = new BubbleTank { Bounds = new Rectangle(50, 100, 76, 64) })
+            {
+                host.Controls.Add(tank);
+                host.Show();
+                tank.Shoot();
+                Check(tank.BubbleCount >= 8 && tank.BubbleCount <= 14, "Click burst count outside randomized range");
+                var overlay = (Form)typeof(BubbleTank).GetField("overlay", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(tank);
+                Check(overlay.Bounds == Screen.FromControl(tank).Bounds, "Bubbles remain clipped to tank or parent");
+                Check(overlay.Owner == host && !overlay.ShowInTaskbar, "Bubble overlay ownership is incorrect");
+                for (int tick = 0; tick < 45; tick++) tank.Advance();
+                Check(tank.BubbleCount > 0, "Bubbles disappeared before reaching the screen top");
+                for (int tick = 0; tick < 1500; tick++) tank.Advance();
+                Check(tank.BubbleCount == 0 && !overlay.Visible, "Finished animation did not clean up");
+                tank.ReducedMotion = true;
+                tank.Shoot();
+                Check(tank.BubbleCount == 0, "Reduced motion still emits bubbles");
+                tank.ReducedMotion = false;
+                tank.Shoot();
+                tank.Dispose();
+                Check(overlay.IsDisposed, "Disposing the tank leaked its overlay");
+                host.Hide();
+            }
             string[] pages = { "Dashboard", "Antivirus", "Real-time monitoring", "Network Security", "System Integrity", "Security Center", "Quarantine", "Breach Checks", "Protected Files", "Password Manager", "Tailscale Devices", "Settings" };
             foreach (string theme in new[] { "Dark", "Light" })
             foreach (int scale in new[] { 100, 150 })

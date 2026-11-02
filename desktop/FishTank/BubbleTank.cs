@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
@@ -8,29 +7,7 @@ namespace FishTank;
 
 public sealed class BubbleTank : PictureBox
 {
-	private sealed class Bubble
-	{
-		public float X;
-
-		public float Y;
-
-		public float VX;
-
-		public float VY;
-
-		public float Radius;
-
-		public float Life;
-	}
-
-	private readonly List<Bubble> bubbles = new List<Bubble>();
-
-	private readonly Timer animation = new Timer
-	{
-		Interval = 30
-	};
-
-	private int serial;
+	private BubbleOverlay overlay;
 
 	public bool ReducedMotion;
 
@@ -42,7 +19,7 @@ public sealed class BubbleTank : PictureBox
 
 	public Color BubbleColor = Color.Cyan;
 
-	public int BubbleCount => bubbles.Count;
+	public int BubbleCount => overlay == null || overlay.IsDisposed ? 0 : overlay.BubbleCount;
 
 	public BubbleTank()
 	{
@@ -50,12 +27,6 @@ public sealed class BubbleTank : PictureBox
 		Cursor = Cursors.Hand;
 		base.TabStop = true;
 		base.AccessibleName = "FishTank mascot. Click or press Space to shoot bubbles.";
-		Timer timer = animation;
-		EventHandler value = delegate
-		{
-			Advance();
-		};
-		timer.Tick += value;
 		base.Click += delegate
 		{
 			Shoot();
@@ -72,50 +43,22 @@ public sealed class BubbleTank : PictureBox
 
 	public void Shoot()
 	{
-		if (ReducedMotion)
-		{
-			return;
-		}
-		for (int i = 0; i < 8; i++)
-		{
-			if (bubbles.Count >= 40)
-			{
-				break;
-			}
-			float num = (float)(serial++ % 7 - 3) * 0.1f;
-			bubbles.Add(new Bubble
-			{
-				X = (float)base.Width * 0.88f,
-				Y = (float)base.Height * 0.48f,
-				VX = 1.4f + (float)i * 0.13f,
-				VY = -0.5f + num,
-				Radius = 2 + i % 4,
-				Life = 1f
-			});
-		}
-		animation.Start();
-		Invalidate();
+		if (ReducedMotion || !Visible || FindForm() == null) return;
+		if (overlay == null || overlay.IsDisposed) overlay = new BubbleOverlay(() => !ReducedMotion && Visible && !IsDisposed);
+		Point origin = PointToScreen(new Point((int)(Width * 0.88f), (int)(Height * 0.48f)));
+		overlay.Shoot(FindForm(), origin, BubbleColor);
 	}
 
 	public void Advance()
 	{
-		for (int num = bubbles.Count - 1; num >= 0; num--)
-		{
-			Bubble bubble = bubbles[num];
-			bubble.X += bubble.VX;
-			bubble.Y += bubble.VY;
-			bubble.VY -= 0.025f;
-			bubble.Life -= 0.025f;
-			if (bubble.Life <= 0f || bubble.X > (float)base.Width + bubble.Radius)
-			{
-				bubbles.RemoveAt(num);
-			}
-		}
-		if (bubbles.Count == 0)
-		{
-			animation.Stop();
-		}
-		Invalidate();
+		if (ReducedMotion) overlay?.HideAndClear();
+		else if (overlay != null && !overlay.IsDisposed) overlay.Advance();
+	}
+
+	protected override void OnVisibleChanged(EventArgs e)
+	{
+		base.OnVisibleChanged(e);
+		if (!Visible && overlay != null && !overlay.IsDisposed) overlay.HideAndClear();
 	}
 
 	protected override void OnPaint(PaintEventArgs e)
@@ -139,20 +82,14 @@ public sealed class BubbleTank : PictureBox
 			using GraphicsPath path2 = Surface.Rounded(new Rectangle(1, 1, base.Width - 3, base.Height - 3), (Frame == "Rounded") ? 14 : 0);
 			e.Graphics.DrawPath(pen, path2);
 		}
-		foreach (Bubble bubble in bubbles)
-		{
-			using Pen pen2 = new Pen(Color.FromArgb((int)(bubble.Life * 220f), BubbleColor), 1.3f);
-			e.Graphics.DrawEllipse(pen2, bubble.X - bubble.Radius, bubble.Y - bubble.Radius, bubble.Radius * 2f, bubble.Radius * 2f);
-		}
+
 	}
 
 	protected override void Dispose(bool disposing)
 	{
 		if (disposing)
 		{
-			animation.Stop();
-			animation.Dispose();
-			bubbles.Clear();
+			overlay?.Dispose();
 		}
 		base.Dispose(disposing);
 	}
