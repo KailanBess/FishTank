@@ -10,7 +10,9 @@ public sealed class Appearance
 {
 	public int Version = 1;
 
-	public bool SimpleExplanationsByDefault;
+	public bool SimpleExplanationsByDefault = true;
+
+	public bool AdvancedMode;
 
 	public string Theme = "Dark";
 

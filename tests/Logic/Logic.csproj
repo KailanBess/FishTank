@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../desktop/FishTank/DownloadChecksum.cs" Link="DownloadChecksum.cs" />
+    <Compile Include="../../desktop/FishTank/NavigationPolicy.cs" Link="NavigationPolicy.cs" />
+    <Compile Include="../../desktop/FishTank/ScanPaths.cs" Link="ScanPaths.cs" />
+  </ItemGroup>
+</Project>

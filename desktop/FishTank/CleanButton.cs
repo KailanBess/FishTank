@@ -60,8 +60,23 @@ public sealed class CleanButton : Button
 		base.OnLostFocus(e);
 	}
 
+	protected override void OnEnabledChanged(EventArgs e)
+	{
+		if (!Enabled) hover = false;
+		Invalidate();
+		base.OnEnabledChanged(e);
+	}
+
+	protected override void OnVisibleChanged(EventArgs e)
+	{
+		hover = false;
+		base.OnVisibleChanged(e);
+	}
+
 	protected override void OnPaint(PaintEventArgs e)
 	{
+		if (Width < 4 || Height < 4) return;
+		e.Graphics.Clear(Parent?.BackColor ?? BackColor);
 		e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
 		using GraphicsPath path = Surface.Rounded(new Rectangle(1, 1, base.Width - 3, base.Height - 3), Radius);
 		using (SolidBrush brush = new SolidBrush(hover ? Hover : Fill))
@@ -72,7 +87,10 @@ public sealed class CleanButton : Button
 		{
 			e.Graphics.DrawPath(pen, path);
 		}
-		TextFormatFlags flags = (TextFormatFlags)(0x8824 | ((TextAlign != ContentAlignment.MiddleLeft) ? 1 : 0));
+		TextFormatFlags flags = TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix;
+		if (TextAlign != ContentAlignment.MiddleLeft) flags |= TextFormatFlags.HorizontalCenter;
 		TextRenderer.DrawText(e.Graphics, Text, Font, new Rectangle(base.Padding.Left + 10, 0, base.Width - base.Padding.Horizontal - 20, base.Height), base.Enabled ? Ink : SystemColors.GrayText, flags);
+		if (Focused && ShowFocusCues && Width > 12 && Height > 12)
+			ControlPaint.DrawFocusRectangle(e.Graphics, Rectangle.Inflate(ClientRectangle, -5, -5), Ink, hover ? Hover : Fill);
 	}
 }

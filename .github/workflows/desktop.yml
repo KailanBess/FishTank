@@ -1,0 +1,43 @@
+name: Build and check Windows app
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Check checksum and navigation behavior
+        run: dotnet run --project tests/Logic/Logic.csproj
+      - name: Build Windows UI regression checks
+        run: dotnet build tests/WindowsUi/WindowsUi.csproj -c Release
+      - name: Exercise pages and capture screenshots
+        shell: pwsh
+        run: |
+          & ./tests/WindowsUi/bin/Release/net48/WindowsUi.exe "$PWD/ui-artifacts"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build CLI
+        run: dotnet build desktop/FishTank.csproj -c Release -p:BuildCli=true
+      - name: Save unsigned Windows builds
+        uses: actions/upload-artifact@v4
+        with:
+          name: FishTank-unsigned-development
+          path: |
+            desktop/bin/Release/net48/FishTank.exe
+            desktop/bin/Release/net48/FishTank.exe.config
+            desktop/bin/Release/cli/net48/FishTank.Cli.exe
+            desktop/bin/Release/cli/net48/FishTank.Cli.exe.config
+      - name: Save UI review screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: FishTank-ui-review
+          path: ui-artifacts/
+          if-no-files-found: ignore

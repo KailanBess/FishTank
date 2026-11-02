@@ -166,10 +166,11 @@ public sealed class Desktop : Form
 		label.BackColor = Color.Transparent;
 		label.Font = Face(size, FontStyle.Regular);
 		label.UseMnemonic = false;
+		label.AutoEllipsis = true;
 		return label;
 	}
 
-	private CleanButton Button(string text, Action action, bool primary)
+	private CleanButton Button(string text, Action action, bool primary, bool allowWhileBusy = false)
 	{
 		CleanButton cleanButton = new CleanButton();
 		cleanButton.Text = text;
@@ -189,7 +190,7 @@ public sealed class Desktop : Form
 		cleanButton2.AccessibleName = text;
 		cleanButton2.Click += delegate
 		{
-			if (busy)
+			if (busy && !allowWhileBusy)
 			{
 				SetStatus("Please wait for the current operation.");
 				return;
@@ -232,7 +233,7 @@ public sealed class Desktop : Form
 		nav = new Panel
 		{
 			Dock = DockStyle.Left,
-			Width = ((appearance.TextScale >= 130) ? 250 : 220),
+			Width = (int)(245 * appearance.TextScale / 100f),
 			BackColor = palette.Sidebar,
 			Padding = new Padding(16, 22, 14, 16)
 		};
@@ -288,11 +289,12 @@ public sealed class Desktop : Form
 		for (int i = 0; i < Pages.Length; i++)
 		{
 			string page = Pages[i];
+			if (!NavigationPolicy.IsVisible(page, appearance.AdvancedMode)) continue;
 			string text = ((page == "Real-time monitoring") ? "Monitoring" : ((page == "Network Security") ? "Network" : ((page == "System Integrity") ? "System integrity" : ((page == "Tailscale Devices") ? "Devices" : ((page == "Password Manager") ? "Passwords" : page)))));
 			CleanButton cleanButton = Button((appearance.ShowIcons ? (Glyphs[i] + "   ") : "") + text, delegate
 			{
 				Navigate(page);
-			}, primary: false);
+			}, primary: false, allowWhileBusy: true);
 			cleanButton.Tag = page;
 			if (appearance.IconOnlyToolbars)
 			{
@@ -301,15 +303,20 @@ public sealed class Desktop : Form
 				tips.SetToolTip(cleanButton, page);
 			}
 			cleanButton.TextAlign = ContentAlignment.MiddleLeft;
-			cleanButton.SetBounds(0, num, nav.Width - 52, 44);
+			cleanButton.SetBounds(0, num, nav.Width - 52, (int)TextSize(44f));
+			cleanButton.BackColor = palette.Sidebar;
+			cleanButton.AccessibleName = page;
+			cleanButton.AccessibleDescription = "Open " + page;
+			tips.SetToolTip(cleanButton, page);
 			cleanButton.Fill = ((page == current) ? Palette.Override(appearance.SelectionColor, palette.Surface2) : palette.Sidebar);
 			cleanButton.Border = ((page == current) ? palette.Line : palette.Sidebar);
 			cleanButton.Ink = ((page == current) ? palette.Accent : palette.Muted);
 			panel4.Controls.Add(cleanButton);
-			num += ((appearance.Density == "Roomy") ? 50 : 46);
+			num += (int)TextSize((appearance.Density == "Roomy") ? 50 : 46);
 		}
 		panel4.AutoScrollMinSize = new Size(0, num);
-		Label label3 = Label("WINDOWS SECURITY COMPANION\nDevelopment preview · 0.6", 8f, palette.Muted);
+		UpdateNavigation(panel4);
+		Label label3 = Label("WINDOWS SECURITY COMPANION\nDevelopment preview · 0.6.1", 8f, palette.Muted);
 		label3.Dock = DockStyle.Bottom;
 		label3.Height = (int)TextSize(52f);
 		label3.Visible = appearance.ShowFooter;
@@ -498,7 +505,7 @@ public sealed class Desktop : Form
 		{
 			return;
 		}
-		int width = Math.Max(650, pageFlow.ClientSize.Width - 24);
+		int width = Math.Max(280, pageFlow.ClientSize.Width - 24);
 		foreach (Control control in pageFlow.Controls)
 		{
 			control.Width = width;
@@ -507,6 +514,7 @@ public sealed class Desktop : Form
 
 	private void Navigate(string page)
 	{
+		if (!NavigationPolicy.IsVisible(page, appearance.AdvancedMode)) page = "Dashboard";
 		current = page;
 		UpdateNavigation(nav);
 		pageFlow.SuspendLayout();
@@ -532,7 +540,10 @@ public sealed class Desktop : Form
 			{
 				bool flag = (string)cleanButton.Tag == current;
 				cleanButton.Fill = (flag ? Palette.Override(appearance.SelectionColor, palette.Surface2) : palette.Sidebar);
-				cleanButton.Border = (flag ? palette.Line : palette.Sidebar);
+				cleanButton.Hover = cleanButton.Fill;
+				cleanButton.BackColor = palette.Sidebar;
+				cleanButton.AccessibleDescription = flag ? "Current page: " + current : "Open " + cleanButton.Tag;
+				cleanButton.Border = (flag ? palette.Accent : palette.Sidebar);
 				cleanButton.Ink = (flag ? palette.Accent : palette.Muted);
 				cleanButton.Invalidate();
 			}
@@ -546,7 +557,7 @@ public sealed class Desktop : Form
 	private void AddBlock(Control c, int height)
 	{
 		c.Height = height;
-		c.Width = Math.Max(650, pageFlow.ClientSize.Width - 24);
+		c.Width = Math.Max(280, pageFlow.ClientSize.Width - 24);
 		c.Margin = new Padding(0, 0, 0, Gap);
 		pageFlow.Controls.Add(c);
 	}
@@ -576,6 +587,14 @@ public sealed class Desktop : Form
 		label2.Height = (int)TextSize(30f);
 		panel2.Controls.Add(label2);
 		panel2.Controls.Add(label);
+		panel2.SizeChanged += delegate
+		{
+			int width = Math.Max(100, panel2.ClientSize.Width);
+			label.Height = TextRenderer.MeasureText(label.Text, label.Font, new Size(width, int.MaxValue), TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix).Height + 8;
+			label2.Height = TextRenderer.MeasureText(label2.Text, label2.Font, new Size(width, int.MaxValue), TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix).Height + 8;
+			int required = label.Height + label2.Height + 10;
+			if (panel2.Height != required) panel2.Height = required;
+		};
 		AddBlock(panel2, (int)TextSize(85f));
 	}
 
@@ -658,36 +677,20 @@ public sealed class Desktop : Form
 			Label label3 = Label("Choose your scan", 18f, palette.Text);
 			label3.Font = Face(18f, FontStyle.Bold);
 			label3.Dock = DockStyle.Top;
-			label3.Height = 43;
+			label3.Height = (int)TextSize(43f);
 			Label label4 = Label("Start with a quick scan, or choose exactly what to inspect.", 11f, palette.Muted);
 			label4.Dock = DockStyle.Top;
-			label4.Height = 43;
-			FlowLayoutPanel flowLayoutPanel = new FlowLayoutPanel();
-			flowLayoutPanel.Dock = DockStyle.Bottom;
-			flowLayoutPanel.Height = 65;
-			flowLayoutPanel.BackColor = palette.Surface;
-			FlowLayoutPanel flowLayoutPanel2 = flowLayoutPanel;
-			flowLayoutPanel2.Controls.Add(Button("Quick scan", delegate
-			{
-				RequestScan("Quick");
-			}, primary: true));
-			flowLayoutPanel2.Controls.Add(Button("Full scan", delegate
-			{
-				RequestScan("Full");
-			}, primary: false));
-			flowLayoutPanel2.Controls.Add(Button("Choose file", delegate
-			{
-				CustomScan(folder: false);
-			}, primary: false));
-			flowLayoutPanel2.Controls.Add(Button("Choose folder", delegate
-			{
-				CustomScan(folder: true);
-			}, primary: false));
-			surface2.Controls.Add(flowLayoutPanel2);
+			label4.Height = (int)TextSize(43f);
 			surface2.Controls.Add(label4);
 			surface2.Controls.Add(label3);
-			AddBlock(surface2, 210);
+			AddBlock(surface2, (int)TextSize(140f));
+			ActionRow(Button("Quick scan", () => RequestScan("Quick"), true),
+				Button("Full scan", () => RequestScan("Full"), false),
+				Button("Choose file", () => CustomScan(false), false),
+				Button("Choose folder", () => CustomScan(true), false));
 			Note("How scanning works", "Quick and full scans follow Defender’s existing remediation policy. Custom scans request no remediation; independent real-time protection can still act.");
+			if (appearance.AdvancedMode)
+			{
 			ActionRow(Button("Detailed multi-target scan", delegate
 			{
 				using ScanDialog scanDialog = new ScanDialog(palette);
@@ -713,6 +716,8 @@ public sealed class Desktop : Form
 			{
 				StartWork(() => Core.Collect("Events"), "Events");
 			}, primary: false));
+			}
+
 			break;
 		}
 		case "Real-time monitoring":
@@ -792,14 +797,16 @@ public sealed class Desktop : Form
 				StartWork(() => Core.Collect("Tailscale"), "Tailscale");
 			}, primary: true), Button("Remote setup guide", delegate
 			{
-				Process.Start(new ProcessStartInfo(Path.Combine(Core.Base, "docs", "REMOTE.md"))
-				{
-					UseShellExecute = true
-				});
+				ShowMessage("Remote setup", "Install and sign in to Tailscale on each device using your own account. Discover devices to inspect your existing network. Discovery does not enable remote control. Remote commands need separately configured access; the email/SMS verification server needs its own HTTPS connection and device token in Settings → Multifactor authentication. Never share those credentials.");
 			}, primary: false));
 			break;
 		case "Security Center":
-			Header("Security center", "Review hardening, account exposure, browser permissions and file changes.");
+			Header("Security center", "Review protection and check downloaded files before opening them.");
+			ShowSecurityChecklist();
+			ActionRow(Button("Verify a download checksum", VerifyDownload, true),
+				Button("Open Windows Security", () => Process.Start(new ProcessStartInfo("windowsdefender:") { UseShellExecute = true }), false));
+			if (appearance.AdvancedMode)
+			{
 			Note("Review first, change deliberately", "These local checks can identify settings that deserve attention. Unavailable checks remain unknown. FishTank does not silently enable, disable or repair Windows security settings.");
 			ActionRow(Button("Windows hardening", delegate
 			{
@@ -827,6 +834,8 @@ public sealed class Desktop : Form
 			{
 				StartWork(IntegrityBaseline.Compare, "Baseline");
 			}, primary: false));
+			}
+
 			break;
 		case "Breach Checks":
 			Header("Breach checks", "Find known email and password exposure, with consent for each lookup.");
@@ -852,7 +861,8 @@ public sealed class Desktop : Form
 			break;
 		case "Settings":
 		{
-			Header("Settings", "Make FishTank feel like yours.");
+			Header("Settings", "Choose a simple view or explore advanced tools.");
+			AddViewControls();
 			Surface surface = Card(195);
 			Label label = Label("Appearance & accessibility", 18f, palette.Text);
 			label.Font = Face(18f, FontStyle.Bold);
@@ -915,9 +925,98 @@ public sealed class Desktop : Form
 		FitPage();
 	}
 
+	private void AddViewControls()
+	{
+		ActionRow(Button(appearance.AdvancedMode ? "Switch to Simple view" : "Show Advanced tools", delegate
+		{
+			Appearance saved = AppearanceStore.Load();
+			saved.AdvancedMode = !appearance.AdvancedMode;
+			saved.SimpleExplanationsByDefault = SimpleExplanations.DefaultSimple;
+			AppearanceStore.Save(saved);
+			appearance = saved;
+			if (!NavigationPolicy.IsVisible(current, appearance.AdvancedMode)) current = "Dashboard";
+			BuildShell();
+		}, false));
+	}
+
+	private void ShowSecurityChecklist()
+	{
+		StringBuilder text = new StringBuilder();
+		try
+		{
+			text.AppendLine(AppAccess.Enabled ? "App password: enabled." : "App password: not set. Set one in Settings to protect app access.");
+			MfaStatus mfa = AppAccess.Mfa;
+			text.AppendLine(!mfa.Configured ? "Authenticator: not enrolled. Add one in Settings; it works without your server."
+				: "Authenticator: enrolled. Sign-in verification is " + (mfa.AskOnSignIn ? "on." : "off; sign-in uses only the password."));
+			if (mfa.Configured) text.AppendLine("Recovery codes remaining: " + mfa.RecoveryCodesRemaining + ". Keep them privately outside this PC.");
+			DeliveryConfiguration delivery = SelfHostedMfa.Load();
+			text.AppendLine(delivery == null ? "Email/SMS: server not connected. Offline authentication remains available."
+				: "Email: " + (delivery.EmailEnrolled ? "enrolled" : "not enrolled") + "; SMS: " + (delivery.SmsEnrolled ? "enrolled" : "not enrolled") + ". Delivery has not been tested by this checklist.");
+		}
+		catch
+		{
+			text.AppendLine("Some access settings could not be read. Their protection status is unknown; review Settings before relying on them.");
+		}
+		text.AppendLine("Windows protection: use Check this device or open Windows Security for current evidence. This checklist is not a malware verdict.");
+		Note("Your local security checklist", text.ToString());
+		ActionRow(Button("Review access settings", () => Navigate("Settings"), false));
+	}
+
+	private void VerifyDownload()
+	{
+		string path = PickFile();
+		if (path == null) return;
+		using (Form prompt = new Form())
+		{
+			prompt.Text = "Verify download · SHA-256";
+			prompt.StartPosition = FormStartPosition.CenterParent;
+			prompt.AutoScaleMode = AutoScaleMode.Dpi;
+			prompt.ClientSize = new Size(600, 280);
+			prompt.MinimumSize = new Size(480, 320);
+			prompt.BackColor = palette.Background;
+			prompt.ForeColor = palette.Text;
+			prompt.Font = Face(10f, FontStyle.Regular);
+			prompt.Padding = new Padding(18);
+			Label help = new Label { Dock = DockStyle.Top, Height = 110,
+				Text = "Paste the publisher's SHA-256 checksum from a trusted source. FishTank reads the file locally; it does not open, run or upload it. A match confirms the file matches that checksum, not that it is safe.", UseMnemonic = false };
+			TextBox input = new TextBox { Dock = DockStyle.Top, MaxLength = 66, AccessibleName = "Expected publisher SHA-256 checksum" };
+			Button verify = new Button { Text = "Compare checksum", AutoSize = true, Dock = DockStyle.Bottom, Height = 42 };
+			verify.Click += delegate
+			{
+				try { input.Text = DownloadChecksum.Normalize(input.Text); prompt.DialogResult = DialogResult.OK; }
+				catch (ArgumentException ex) { ExplainedMessageBox.Show(prompt, ex.Message, "Check the checksum"); }
+			};
+			prompt.Controls.Add(input);
+			prompt.Controls.Add(help);
+			prompt.Controls.Add(verify);
+			prompt.AcceptButton = verify;
+			if (prompt.ShowDialog(this) != DialogResult.OK) return;
+			string expected = input.Text;
+			StartWork(delegate
+			{
+				string actual = DownloadChecksum.Compute(path);
+				return (DownloadChecksum.Matches(expected, actual) ? "MATCH: the file matches the supplied checksum. This does not prove it is safe." : "MISMATCH: the file differs from the supplied checksum. Do not run it until you resolve the difference with its publisher.")
+					+ "\nExpected SHA-256: " + expected + "\nActual SHA-256: " + actual;
+			}, "Message");
+		}
+	}
+
 	private void Dashboard()
 	{
 		Header("Your security, at a glance", "A calm place to check this PC and decide what needs attention.");
+		AddViewControls();
+		if (observing)
+		{
+			Note("Folder observer is running", "Your optional folder observer is still running in the background. Switching views does not stop it. It reports activity and does not block threats.");
+			ActionRow(Button("Stop folder observer", delegate { monitor.Dispose(); observing = false; RenderPage(); }, false));
+		}
+		if (!appearance.AdvancedMode)
+		{
+			Note("Start here", "1. Check this device to review Windows protection.\n2. Run a quick scan when you want Defender to inspect common locations.\n3. Set an app password in Settings, then add an authenticator and save recovery codes privately.\nAdvanced view adds monitoring, network inventory, manual quarantine and repair tools. No settings change just by switching views.");
+			ActionRow(Button("Quick scan", () => RequestScan("Quick"), true),
+				Button("Security checklist", () => Navigate("Security Center"), false),
+				Button("Protect app access", () => Navigate("Settings"), false));
+		}
 		if (appearance.ShowBanner)
 		{
 			Surface surface = Card(220);
@@ -1000,6 +1099,8 @@ public sealed class Desktop : Form
 			label4.BorderStyle = ((appearance.BadgeStyle == "Square") ? BorderStyle.FixedSingle : BorderStyle.None);
 		}
 		AddBlock(label4, 25);
+		if (appearance.AdvancedMode)
+		{
 		int num2 = 0;
 		bool[] cardsVisible = appearance.CardsVisible;
 		for (int num3 = 0; num3 < cardsVisible.Length; num3++)
@@ -1057,6 +1158,7 @@ public sealed class Desktop : Form
 		else
 		{
 			tableLayoutPanel2.Dispose();
+		}
 		}
 		Label c = Label(lastScan, 10f, palette.Muted);
 		AddBlock(c, (int)TextSize(25f));
@@ -1538,6 +1640,7 @@ public sealed class Desktop : Form
 				try
 				{
 					appearanceDialog.Value.SimpleExplanationsByDefault = SimpleExplanations.DefaultSimple;
+					appearanceDialog.Value.AdvancedMode = this.appearance.AdvancedMode;
 					AppearanceStore.Save(appearanceDialog.Value);
 					this.appearance = appearanceDialog.Value.Copy();
 					recoveryNotice = "";

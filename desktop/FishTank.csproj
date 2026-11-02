@@ -8,6 +8,8 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <OutputType Condition="'$(BuildCli)' == 'true'">Exe</OutputType>
     <AssemblyName Condition="'$(BuildCli)' == 'true'">FishTank.Cli</AssemblyName>
+    <OutputPath Condition="'$(BuildCli)' == 'true'">bin/$(Configuration)/cli/</OutputPath>
+    <IntermediateOutputPath Condition="'$(BuildCli)' == 'true'">obj/$(Configuration)/cli/</IntermediateOutputPath>
   </PropertyGroup>
   <PropertyGroup>
     <LangVersion>12.0</LangVersion>

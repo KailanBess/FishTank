@@ -18,7 +18,7 @@ dotnet build desktop/FishTank.csproj -c Release
 dotnet build desktop/FishTank.csproj -c Release -p:BuildCli=true
 ```
 
-Both outputs are under `desktop/bin/Release/net48/`. Package restore uses Microsoft.NETFramework.ReferenceAssemblies.net48 1.0.3 from NuGet. The recovered C# uses C# 12 syntax, so use this SDK project rather than the old .NET Framework csc.exe build script.
+Desktop output is under `desktop/bin/Release/net48/`; CLI output is under `desktop/bin/Release/cli/net48/`. Separate intermediate/output directories keep one build from removing the other. Package restore uses Microsoft.NETFramework.ReferenceAssemblies.net48 1.0.3 from NuGet. The recovered C# uses C# 12 syntax, so use this SDK project rather than the old .NET Framework csc.exe build script.
 
 Both builds passed in the Linux recovery workspace with zero warnings and zero errors. Compilation does not validate Windows runtime behavior, GUI layouts, Defender integration, DPAPI storage, service installation, or live MFA delivery. The original desktop tests were not supplied and have not been recreated. The original executables under `windows/` have not been replaced by the recovered builds. New builds remain unsigned and are not byte-identical to the originals.
 
