@@ -70,6 +70,8 @@ internal static class Program
             var unavailable = new ScanOperation("Quick", null, () => throw new FileNotFoundException("Defender unavailable fixture")); unavailable.RunAsync().GetAwaiter().GetResult();
             Check(!unavailable.IsRunning && unavailable.Phase.StartsWith("Failed") && unavailable.Result.Contains("unavailable"), "Missing Defender reported success");
             TestOfflineUpdates();
+            var signature = TrustedDownloads.Signature(typeof(Program).Assembly.Location);
+            Check(signature.Status == "NotSigned", "Built-in publisher verifier did not inspect the unsigned fixture");
             File.WriteAllText(Path.Combine(root, "github-update-result.json"), "{\"Status\":\"Pending\"}"); Check(UpdateRecoveryStatus.Notice() != null, "Interrupted update hidden");
             File.WriteAllText(Path.Combine(root, "github-update-result.json"), "broken result"); Check(UpdateRecoveryStatus.Notice().Contains("could not be read"), "Damaged update result treated as success");
             Console.WriteLine(checks + " isolated-profile resilience checks passed. No live scan, user profile, certificate trust or installation was changed."); return 0;

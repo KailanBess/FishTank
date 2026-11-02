@@ -13,12 +13,13 @@ Reviewed November 2, 2026. This is an implementation review and regression-test 
 | Interrupted or unreadable update results were easy to overlook. | Put incomplete/failed update recovery at the top of Dashboard attention items and link to installation/rollback results from Recovery center. | Pending and malformed result tests. |
 | Browser passphrase input could be cleared while a preceding vault-lock request was still finishing. | Disable the master-passphrase fields until locking and its state refresh finish, so input cannot be accepted and then cleared by that response. | Existing hosted browser regression exercises immediate lock → re-entry → unlock. |
 | A previous test fixture added a second backup type and collided with an unrelated Single() assertion. | Select the intended password-vault backup by kind and path. | Native security-suite fixture corrected; coverage is retained. |
+| Windows PowerShell children could inherit PowerShell 7 module paths and fail to load their built-in signature/collector modules. | Set compatible built-in/machine module paths for the child process only; keep the user's environment and all trust checks unchanged. Include bounded verifier diagnostics on failure. | Reproduced the module-load error locally, then confirmed the real verifier reports the unsigned fixture as NotSigned. |
 | Settings had accumulated setup, authentication, diagnostics and connection controls on one long page. | Group everyday settings into appearance/access and automation/connections; move occasional tasks into More tools. Preserve settings search and Recovery center access. | Windows UI checks and screenshots at 100/150% text scale in both themes. |
 
 ## Verification
 
 - 132 logic checks passed locally.
-- 30 new isolated-profile resilience checks passed locally, including a blocked loopback proxy that makes the real update check fail without contacting GitHub.
+- 31 new isolated-profile resilience checks passed locally, including a blocked loopback proxy that makes the real update check fail without contacting GitHub and an actual built-in signature-verifier check.
 - 46 existing app-insight/polish checks are included in the native security suite and have a separate local fixture runner.
 - 3,639 Windows UI checks passed locally after the Settings changes.
 - 28 collector fixture checks and eight PowerShell resource/build-script syntax checks passed locally.

@@ -115,6 +115,12 @@ public static class Core
 			RedirectStandardError = true
 		};
 		StringBuilder output = new StringBuilder();
+        // A PowerShell 7 launcher can pass its incompatible module path to this .NET process.
+        // Scope module selection to the Windows PowerShell child, without changing the user's environment.
+        string windowsPowerShell = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "WindowsPowerShell\\v1.0\\powershell.exe");
+        if (string.Equals(Path.GetFullPath(exe), windowsPowerShell, StringComparison.OrdinalIgnoreCase))
+            process.StartInfo.EnvironmentVariables["PSModulePath"] = Path.Combine(Path.GetDirectoryName(windowsPowerShell), "Modules")
+                + Path.PathSeparator + Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "WindowsPowerShell\\Modules");
 		StringBuilder error = new StringBuilder();
 		object sync = new object();
 		DataReceivedEventHandler value = delegate(object s, DataReceivedEventArgs e)
