@@ -11,6 +11,8 @@ This is recovered source, not the lost original files. Original comments, source
 
 That paragraph describes the initial recovery. Subsequent development adds the [0.7.0 security and integrity features](../docs/SECURITY-AND-INTEGRITY.md); new regression tests are under `tests/`. Original uploaded binaries remain in `windows/`; updated unsigned preview builds are packaged separately.
 
+The [0.8 preview](../docs/PROTECTED-FILES-AND-GITHUB-UPDATES.md) also adds protected file containers and confirmed GitHub update installation. Release signing still needs the publisher's real certificate and secure GitHub configuration.
+
 ## Build
 
 Install the .NET 8 SDK. From the repository root:

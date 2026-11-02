@@ -1,5 +1,7 @@
 # FishTank 0.7 security and integrity preview
 
+This records the 0.7 feature set. The current preview also includes [0.8 protected files and GitHub installation support](PROTECTED-FILES-AND-GITHUB-UPDATES.md). Statements below about staging-only updates describe the older custom HTTPS path; the new GitHub path has a separate confirmed installation action.
+
 Open **Security Center → Security and integrity tools**. Simple view remains the default. The tools explain findings; **Show full evidence (Advanced)** reveals raw before/after values and timestamps. No view automatically changes Windows policy, removes startup entries, closes ports, or grants permissions.
 
 ## Features implemented

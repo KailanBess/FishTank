@@ -54,7 +54,7 @@ public static class Vault
 		}
 	}
 
-	private static List<SafeFileHandle> LockParents(string path)
+	internal static List<SafeFileHandle> LockParents(string path)
 	{
 		List<SafeFileHandle> list = new List<SafeFileHandle>();
 		try

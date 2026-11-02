@@ -75,7 +75,14 @@ public sealed class SecurityToolsDialog : Form
         try { var baseline = FolderIntegrityStore.Baseline(); if (baseline != null) { folder = baseline.Root; folderName.Text = folder; recursive.Checked = baseline.Recursive; exclusions.Lines = baseline.Exclusions; } }
         catch { folderName.Text = "Saved baseline could not be read. It has not been replaced."; }
 
-        var downloads = Page(tabs, "Downloads and updates", "Inspect a file's Windows publisher signature. Valid signatures are not malware verdicts. Update staging additionally requires a trusted SHA-256, a configured publisher certificate pin, and a newer FishTank version. Current unsigned development builds cannot pass signed-update verification. Nothing here executes an update.");
+        var downloads = Page(tabs, "Downloads and updates", "Inspect a file's Windows publisher signature. Valid signatures are not malware verdicts. Update staging additionally requires a trusted SHA-256, a configured publisher certificate pin, and a newer FishTank version. Current unsigned development builds cannot pass signed-update verification. Only the separate confirmed GitHub installation action replaces and restarts the app.");
+        Explain(downloads, "GitHub updates: only public stable releases from KailanBess/FishTank. Checking and downloading require consent; installation is a separate confirmed action. Signed desktop and CLI assets are required. Your data and existing runtime configuration are preserved.");
+        Add(downloads, "Check GitHub for updates", () => { if (Confirm("Contact GitHub's API to check KailanBess/FishTank public stable releases? GitHub can see your IP address; no app credentials are sent.")) Run(GitHubUpdates.Check); });
+        Add(downloads, "Download and verify GitHub update", () => { if (Confirm("Download both release executables from GitHub and verify their digests, publisher pin and versions? No installation occurs in this step.")) Run(GitHubUpdates.DownloadAndStage); });
+        Add(downloads, "Install verified GitHub update", () => {
+            if (Confirm("Close FishTank, reverify and install both staged GitHub executables, retain rollback copies, and restart? Finish open work first. Your private data is not replaced. Installation needs write access to the app folder; no administrator elevation is requested automatically.")) Authorize(GitHubUpdateInstaller.Start);
+        });
+        Add(downloads, "Last GitHub installation result", () => SetReport(GitHubUpdateInstaller.LastResult()));
         Add(downloads, "Inspect publisher signature", () => { string file = PickFile(); if (file != null) Run(() => TrustedDownloads.Inspect(file)); });
         Add(downloads, "Check configured release feed", () => { if (Confirm("Contact the configured HTTPS release feed? Its host can see your IP address. No app credentials are sent. Advertised releases are not trusted until package verification succeeds.")) Run(VerifiedUpdateFeed.Check); });
         Add(downloads, "Download and verify advertised update", () => { if (Confirm("Contact the configured release host and download its advertised package (maximum 128 MiB)? FishTank verifies publisher, checksum and version before staging it. It will not execute or install the package.")) Run(VerifiedUpdateFeed.DownloadAndStage); });
@@ -95,6 +102,7 @@ public sealed class SecurityToolsDialog : Form
         var windowsLock = new CheckBox { Text = "Lock FishTank when Windows locks or disconnects", AutoSize = true, Checked = preferences?.LockWithWindows ?? true }; settings.Controls.Add(windowsLock);
         var reminders = new CheckBox { Text = "Show in-app security and backup reminders", AutoSize = true, Checked = preferences?.Reminders ?? false }; settings.Controls.Add(reminders);
         var desktopNotifications = new CheckBox { Text = "Also show Windows desktop notifications (no file names or secrets)", AutoSize = true, Checked = preferences?.DesktopNotifications ?? false }; settings.Controls.Add(desktopNotifications);
+        var checkGitHub = new CheckBox { Text = "Check public GitHub releases once after startup (contacts GitHub)", AutoSize = true, Checked = preferences?.CheckGitHubOnStartup ?? false }; settings.Controls.Add(checkGitHub);
         Explain(settings, "Remind after this many days:");
         var days = new NumericUpDown { Minimum = 1, Maximum = 90, Value = preferences?.ReminderDays ?? 7, Width = 100, AccessibleName = "Security reminder interval in days" }; settings.Controls.Add(days);
         Explain(settings, "Folder comparison schedule (while app is open):");
@@ -110,7 +118,7 @@ public sealed class SecurityToolsDialog : Form
             string publisher = pin.Text.Trim(); if (publisher != "") publisher = DownloadChecksum.Normalize(publisher);
             string feedUrl = feed.Text.Trim(); if (feedUrl != "") VerifiedUpdateFeed.RequireHttps(feedUrl);
             Action save = () => {
-                SecurityPreferences.Update(p => { p.IdleMinutes = (int)idle.Value; p.LockWithWindows = windowsLock.Checked; p.Reminders = reminders.Checked; p.DesktopNotifications = desktopNotifications.Checked; p.ReminderDays = (int)days.Value; p.FolderCheckHours = new[] { 0, 1, 24, 168 }[schedule.SelectedIndex]; p.PublisherCertificateSha256 = publisher; p.UpdateFeedUrl = feedUrl; });
+                SecurityPreferences.Update(p => { p.IdleMinutes = (int)idle.Value; p.LockWithWindows = windowsLock.Checked; p.Reminders = reminders.Checked; p.DesktopNotifications = desktopNotifications.Checked; p.CheckGitHubOnStartup = checkGitHub.Checked; p.ReminderDays = (int)days.Value; p.FolderCheckHours = new[] { 0, 1, 24, 168 }[schedule.SelectedIndex]; p.PublisherCertificateSha256 = publisher; p.UpdateFeedUrl = feedUrl; });
                 SetReport("Security preferences saved. App locking works only when an app password is configured. Schedules run only while FishTank is open.");
             };
             bool changedTrust = publisher != SecurityPreferences.Load().PublisherCertificateSha256 || feedUrl != SecurityPreferences.Load().UpdateFeedUrl;

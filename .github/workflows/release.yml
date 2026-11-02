@@ -1,0 +1,72 @@
+name: Publish signed GitHub update
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing stable version tag matching both assembly versions
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  signed-release:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    environment: release
+    permissions:
+      contents: write
+    env:
+      FISHTANK_RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Logic and collector fixture tests
+        shell: pwsh
+        run: |
+          dotnet run --project tests/Logic/Logic.csproj
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./tests/Check-PowerShell.ps1
+          ./tests/Test-Collectors.ps1
+      - name: Windows security and UI checks
+        shell: pwsh
+        run: |
+          dotnet build tests/WindowsSecurity/WindowsSecurity.csproj -c Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & ./tests/WindowsSecurity/bin/Release/net48/WindowsSecurity.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet build tests/WindowsUi/WindowsUi.csproj -c Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & ./tests/WindowsUi/bin/Release/net48/WindowsUi.exe "$PWD/ui-artifacts"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet build desktop/FishTank.csproj -c Release -p:BuildCli=true
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet build tests/UpdateFixture/UpdateFixture.csproj -c Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./tests/Test-UpdateHelper.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Sign and verify release executables
+        shell: powershell
+        env:
+          FISHTANK_SIGNING_PFX_BASE64: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 }}
+          FISHTANK_SIGNING_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PASSWORD }}
+          FISHTANK_TIMESTAMP_URL: ${{ vars.WINDOWS_TIMESTAMP_URL }}
+        run: ./scripts/Sign-Release.ps1 -Tag $env:FISHTANK_RELEASE_TAG
+      - name: Publish complete signed release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $notes = @'
+          Signed FishTank desktop and CLI update. Configure an independently verified publisher certificate SHA-256 pin in the app before installing. GitHub assets must include SHA-256 digest metadata; the app never falls back to unsigned updates. User data is not included in these assets.
+          '@
+          $notes | Set-Content -LiteralPath release-notes.txt -Encoding utf8
+          gh release create $env:FISHTANK_RELEASE_TAG ./desktop/bin/Release/net48/FishTank.exe ./desktop/bin/Release/cli/net48/FishTank.Cli.exe ./packages/PublisherCertificateSha256.txt --verify-tag --draft --title "FishTank $env:FISHTANK_RELEASE_TAG" --notes-file release-notes.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          gh release edit $env:FISHTANK_RELEASE_TAG --draft=false --latest
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

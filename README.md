@@ -2,7 +2,7 @@
 
 Windows application builds and a self-hosted email/SMS verification backend.
 
-The [0.7.0 desktop preview](packages/FishTank-desktop-preview.zip) includes Simple/Advanced views, a security workspace, protection/account/permission/network reviews, startup and folder-integrity comparisons, encrypted evidence history, backup verification and restore drills, app locking, reminders, and verified-update staging. See [features, limits, and remaining validation](docs/SECURITY-AND-INTEGRITY.md). It compiles and passes available cross-platform checks; Windows runtime/visual validation, release signing and an independent audit remain pending. The original uploaded builds below remain unchanged.
+The [0.8.0 desktop preview](packages/FishTank-desktop-preview.zip) adds passphrase-encrypted personal file containers and GitHub release checking, verification and confirmed installation with executable backups/rollback. See [protected files and GitHub setup](docs/PROTECTED-FILES-AND-GITHUB-UPDATES.md) for the limits and required release-signing setup. Earlier [security/integrity tools](docs/SECURITY-AND-INTEGRITY.md) remain included. Builds and available cross-platform checks pass; Windows execution, a real signed release/install, and an independent audit remain pending. Original uploaded binaries below remain unchanged.
 
 ## Files
 

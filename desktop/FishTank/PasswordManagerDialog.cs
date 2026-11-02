@@ -32,6 +32,7 @@ public sealed class PasswordManagerDialog : Form
 	private Form secretDialog;
 
 	private bool working;
+	internal bool HasRunningOperation => working;
 
 	private int lockGeneration;
 

@@ -82,6 +82,31 @@ internal static class Program
             Check(health.Items.All(x => new[] { "Unknown", "Review", "No issue observed" }.Contains(x.State)), "Unsupported health status");
             string summary = SecurityToolsDialog.Summarize(Core.Json(new[] { new EvidenceItem { Name = "Fixture", State = "Unknown", Value = "Fixture unavailable" } }));
             Check(summary.Contains("unknown") && summary.Contains("full evidence"), "Simple summary hid unknown status or evidence access");
+            string personal = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "FishTank-safe-fixture-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(personal);
+            try
+            {
+                string document = Path.Combine(personal, "fixture-private.txt"), container = Path.Combine(personal, "fixture.ftsafe");
+                File.WriteAllText(document, "Fixture plaintext for verified move only");
+                ProtectedFileService.Create(new[] { document }, null, container, pass, true);
+                Check(!File.Exists(document), "Verified source move left original plaintext");
+                Check(File.Exists(container) && File.Exists(container + ".recovery.ftsafe"), "Verified move lacks two encrypted copies");
+                using (var recoveryCopy = ProtectedFileService.Open(container + ".recovery.ftsafe", pass)) Check(recoveryCopy.Files.Count == 1, "Recovery container could not be verified");
+                using (var permitted = ProtectedFileService.Open(container, pass)) ProtectedFileService.Export(permitted, personal);
+                string exported = Directory.GetDirectories(personal, "FishTank-restored-*").Single();
+                Check(File.ReadAllText(Path.Combine(exported, "fixture-private.txt")) == "Fixture plaintext for verified move only", "Permitted plaintext export was corrupted");
+                Check(NamedStreams.Read(Path.Combine(exported, "fixture-private.txt"), "Zone.Identifier").Contains("ZoneId=3"), "Export lost Windows internet-origin warnings");
+                Check(Directory.GetAccessControl(exported).AreAccessRulesProtected, "Plaintext export inherited broad parent access");
+                File.WriteAllText(document, "Still readable fixture");
+                string blocked = Path.Combine(personal, "blocked.ftsafe"); File.WriteAllText(blocked + ".recovery.ftsafe", "existing user file fixture");
+                Reject<IOException>(() => ProtectedFileService.Create(new[] { document }, null, blocked, pass, true), "Existing recovery copy was overwritten");
+                Check(File.ReadAllText(document) == "Still readable fixture", "Failed protection deleted original plaintext");
+                NamedStreams.Write(document, "fixture-metadata", "Preserve this alternate stream");
+                Reject<IOException>(() => ProtectedFileService.Create(new[] { document }, null, Path.Combine(personal, "metadata.ftsafe"), pass, true), "Move silently discarded alternate stream data");
+                Check(NamedStreams.Read(document, "fixture-metadata") == "Preserve this alternate stream", "Refused move damaged alternate streams");
+                Reject<IOException>(() => new ProtectedSource(Path.Combine(Core.Base, "WindowsSecurity.exe"), true), "Application executable was movable into protected storage");
+            }
+            finally { Directory.Delete(personal, true); }
             Console.WriteLine(checks + " Windows security checks passed.");
             return 0;
         }

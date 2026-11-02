@@ -23,7 +23,7 @@ try {
     Check(DownloadChecksum.Compute(path) == "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855", "Empty download vector");
     foreach (var bad in new[] { "", "abc", new string('G', 64), digest + "extra", "file.exe " + digest, digest.Substring(1) })
         Reject(() => DownloadChecksum.Normalize(bad), "Malformed checksum accepted");
-    foreach (var page in new[] { "Dashboard", "Antivirus", "Security Center", "Breach Checks", "Password Manager", "Settings" })
+    foreach (var page in new[] { "Dashboard", "Antivirus", "Security Center", "Breach Checks", "Protected Files", "Password Manager", "Settings" })
         Check(NavigationPolicy.IsVisible(page, false), "Essential page hidden: " + page);
     foreach (var page in new[] { "Real-time monitoring", "Network Security", "System Integrity", "Quarantine", "Tailscale Devices" }) {
         Check(!NavigationPolicy.IsVisible(page, false), "Advanced page exposed: " + page);
@@ -86,5 +86,57 @@ try {
         foreach (var exclusion in new[] { "../secret", "/absolute", "C:/absolute", "cache/*", "a//b" })
             Reject(() => FolderIntegrity.NormalizeExclusions(new[] { exclusion }), "Unsafe exclusion accepted");
     } finally { Directory.Delete(folder, true); }
+    string safeRoot = Path.Combine(Path.GetTempPath(), "FishTank-safe-" + Guid.NewGuid().ToString("N"));
+    Directory.CreateDirectory(safeRoot);
+    try {
+        const string passphrase = "Test-only protected file passphrase!";
+        string container = Path.Combine(safeRoot, "protected.ftsafe");
+        byte[] contents = Encoding.UTF8.GetBytes("PRIVATE_CONTENT_TEST_12345");
+        using (var input = new MemoryStream(contents))
+            FileSafe.Create(container, passphrase, new[] { new FileSafeSource { Name = "private-folder/private-name.txt", Content = input } });
+        byte[] encrypted = File.ReadAllBytes(container);
+        string encodedBytes = Encoding.UTF8.GetString(encrypted);
+        Check(!encodedBytes.Contains("PRIVATE_CONTENT_TEST_12345") && !encodedBytes.Contains("private-name.txt"), "Protected file leaked name or content");
+        bool rejected = false; try { using var ignored = FileSafe.Open(container, "incorrect"); } catch (System.Security.Cryptography.CryptographicException) { rejected = true; }
+        Check(rejected, "Protected file accepted wrong passphrase");
+        string export = Path.Combine(safeRoot, "permitted-export");
+        using (var opened = FileSafe.Open(container, passphrase)) {
+            Check(opened.Files.Single().Name == "private-folder/private-name.txt", "Protected name did not round trip");
+            opened.ExtractAll(export);
+            Check(File.ReadAllBytes(Path.Combine(export, "private-folder", "private-name.txt")).SequenceEqual(contents), "Protected bytes did not round trip");
+            bool overwrite = false; try { opened.ExtractAll(export); } catch (IOException) { overwrite = true; }
+            Check(overwrite, "Protected export overwrote an existing folder");
+            opened.Dispose();
+            bool locked = false; try { var ignored = opened.Files; } catch (InvalidOperationException) { locked = true; }
+            Check(locked, "Protected contents accessible after lock");
+        }
+        foreach (int position in new[] { 12, 28, 60, encrypted.Length - 1 }) {
+            byte[] changed = (byte[])encrypted.Clone(); changed[position] ^= 1;
+            string damaged = Path.Combine(safeRoot, "damaged.ftsafe"); File.WriteAllBytes(damaged, changed);
+            bool failed = false; try { using var ignored = FileSafe.Open(damaged, passphrase); } catch (System.Security.Cryptography.CryptographicException) { failed = true; }
+            Check(failed, "Tampered protected container accepted at " + position);
+        }
+        foreach (var name in new[] { "../escape", "/absolute", "C:/escape", "a/../escape", "file.txt:stream", "CON.txt", "a//b", "folder\\file", "COM¹.txt", "NUL .txt", "CONOUT$", "bad\u0001name" }) {
+            bool failed = false; try { FileSafe.SafeName(name); } catch (InvalidDataException) { failed = true; }
+            Check(failed, "Unsafe protected file name accepted: " + name);
+        }
+        using (var input = new MemoryStream(contents)) {
+            bool overwrite = false; try { FileSafe.Create(container, passphrase, new[] { new FileSafeSource { Name = "copy", Content = input } }); } catch (IOException) { overwrite = true; }
+            Check(overwrite && File.ReadAllBytes(container).SequenceEqual(encrypted), "Existing protected container replaced");
+        }
+    } finally { Directory.Delete(safeRoot, true); }
+    var release = new GitHubRelease { id = 1, tag_name = "v1.2.3", assets = new[] { new GitHubAsset { id = 2, name = "FishTank.exe", size = 123,
+        digest = "sha256:" + new string('A', 64), browser_download_url = "https://github.com/KailanBess/FishTank/releases/download/v1.2.3/FishTank.exe" } } };
+    Check(GitHubReleasePolicy.Version(release.tag_name) == "1.2.3.0", "GitHub version normalization failed");
+    Check(GitHubReleasePolicy.Asset(release, "FishTank.exe").id == 2, "Valid GitHub asset rejected");
+    release.prerelease = true; Reject(() => GitHubReleasePolicy.Asset(release, "FishTank.exe"), "Prerelease auto-update accepted"); release.prerelease = false;
+    release.draft = true; Reject(() => GitHubReleasePolicy.Asset(release, "FishTank.exe"), "Draft update accepted"); release.draft = false;
+    release.assets[0].digest = null; Reject(() => GitHubReleasePolicy.Asset(release, "FishTank.exe"), "Missing GitHub digest accepted"); release.assets[0].digest = "sha256:" + new string('A', 64);
+    release.assets[0].browser_download_url = "https://github.com/other/repo/releases/download/v1.2.3/FishTank.exe";
+    Reject(() => GitHubReleasePolicy.Asset(release, "FishTank.exe"), "Wrong GitHub repository accepted");
+    var origin = new Uri("https://github.com/KailanBess/FishTank/releases/download/v1.2.3/FishTank.exe");
+    Check(GitHubReleasePolicy.Redirect(origin, "https://release-assets.githubusercontent.com/asset?signature=fixture").Scheme == "https", "GitHub signed asset redirect refused");
+    foreach (var redirect in new[] { "http://release-assets.githubusercontent.com/asset", "https://evil.example/asset", "https://user:password@release-assets.githubusercontent.com/asset", "https://github.com/other/repo/releases/download/v1.2.3/FishTank.exe", "https://release-assets.githubusercontent.com:8443/asset" })
+        Reject(() => GitHubReleasePolicy.Redirect(origin, redirect), "Unsafe GitHub redirect accepted");
     Console.WriteLine($"{count} checks passed.");
 } finally { File.Delete(path); }

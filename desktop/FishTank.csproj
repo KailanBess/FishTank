@@ -26,6 +26,8 @@
     <EmbeddedResource Include="FishTank.png" LogicalName="FishTank.png" />
     <None Remove="FishTank.Trust.ps1" />
     <EmbeddedResource Include="FishTank.Trust.ps1" LogicalName="FishTank.Trust.ps1" />
+    <None Remove="FishTank.ApplyUpdate.ps1" />
+    <EmbeddedResource Include="FishTank.ApplyUpdate.ps1" LogicalName="FishTank.ApplyUpdate.ps1" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System.ServiceProcess">

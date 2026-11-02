@@ -10,6 +10,7 @@ public sealed class SecurityPreferences
     public bool LockWithWindows = true;
     public bool Reminders;
     public bool DesktopNotifications;
+    public bool CheckGitHubOnStartup;
     public int ReminderDays = 7;
     public int FolderCheckHours; // Zero disables automatic comparisons; only runs while FishTank is open.
     public DateTime LastReviewUtc = DateTime.UtcNow;

@@ -10,6 +10,7 @@ internal sealed class SecurityScheduler : IDisposable
     private readonly Action<string> notify;
     private bool working;
     private bool disposed;
+    private bool checkedGitHub;
     internal SecurityScheduler(Action<string> notify)
     {
         this.notify = notify;
@@ -24,6 +25,12 @@ internal sealed class SecurityScheduler : IDisposable
         {
             var prefs = SecurityPreferences.Load();
             var now = DateTime.UtcNow;
+            if (prefs.CheckGitHubOnStartup && !checkedGitHub)
+            {
+                checkedGitHub = true;
+                string update = await Task.Run(GitHubUpdates.Check);
+                if (!disposed) notify(update);
+            }
             if (prefs.Reminders && now - prefs.LastReminderUtc >= TimeSpan.FromDays(prefs.ReminderDays)
                 && (now - prefs.LastReviewUtc >= TimeSpan.FromDays(prefs.ReminderDays)
                     || now - prefs.LastBackupVerifiedUtc >= TimeSpan.FromDays(prefs.ReminderDays)))

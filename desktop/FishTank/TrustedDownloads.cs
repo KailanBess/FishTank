@@ -39,6 +39,11 @@ public static class TrustedDownloads
     }
     public static string StageUpdate(string path, string checksum, string expectedVersion = null)
     {
+        var staged = StageCore(path, checksum, expectedVersion);
+        return "Verified update staged at " + staged.Path + ". It has NOT been run or installed. GitHub pair updates can be installed separately from the GitHub update controls.";
+    }
+    internal static StagedExecutable StageCore(string path, string checksum, string expectedVersion = null, string expectedName = null)
+    {
         lock (Gate)
         {
             checksum = DownloadChecksum.Normalize(checksum);
@@ -52,6 +57,7 @@ public static class TrustedDownloads
                 if (signature.Status != "Valid" || !DownloadChecksum.Matches(prefs.PublisherCertificateSha256, signature.CertificateSha256)) throw new IOException("Update publisher signature or certificate pin was not accepted.");
                 var assembly = AssemblyName.GetAssemblyName(path); // Metadata only; never loads executable code.
                 if (assembly.Name != "FishTank" && assembly.Name != "FishTank.Cli") throw new IOException("This is not a recognized FishTank assembly.");
+                if (expectedName != null && assembly.Name + ".exe" != expectedName) throw new IOException("GitHub update component identity mismatch.");
                 string version = assembly.Version.ToString();
                 if (expectedVersion != null && version != expectedVersion) throw new IOException("Signed package version differs from the advertised version.");
                 UpdateVersionPolicy.RequireNewer(version, typeof(TrustedDownloads).Assembly.GetName().Version.ToString(), prefs.HighestStagedVersion);
@@ -61,10 +67,11 @@ public static class TrustedDownloads
                 bool created = false;
                 try
                 {
-                    using (var copy = new FileStream(destination, FileMode.CreateNew, FileAccess.Write, FileShare.None)) { created = true; held.CopyTo(copy); copy.Flush(true); }
+                    if (!File.Exists(destination))
+                        using (var copy = new FileStream(destination, FileMode.CreateNew, FileAccess.Write, FileShare.None)) { created = true; held.CopyTo(copy); copy.Flush(true); }
                     if (!DownloadChecksum.Matches(checksum, DownloadChecksum.Compute(destination))) throw new IOException("Staged copy did not match; it was discarded.");
                     SecurityPreferences.Update(p => p.HighestStagedVersion = version);
-                    return "Verified update staged at " + destination + ". It has NOT been run or installed. Reverify before applying it; no automatic installer or rollback is enabled.";
+                    return new StagedExecutable { Name = assembly.Name + ".exe", Path = destination, Sha256 = checksum, PublisherPin = signature.CertificateSha256, Version = version };
                 }
                 catch { if (created && File.Exists(destination)) File.Delete(destination); throw; }
             }

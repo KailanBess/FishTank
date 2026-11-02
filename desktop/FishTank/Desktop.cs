@@ -29,6 +29,7 @@ public sealed class Desktop : Form
 	private FolderMonitor monitor = new FolderMonitor();
 
 	private bool busy;
+	internal bool HasRunningOperation => busy;
 
 	private bool observing;
 
@@ -56,15 +57,15 @@ public sealed class Desktop : Form
 
 	private readonly ToolTip tips = new ToolTip();
 
-	private static readonly string[] Pages = new string[11]
+	private static readonly string[] Pages = new string[12]
 	{
-		"Dashboard", "Antivirus", "Real-time monitoring", "Network Security", "System Integrity", "Security Center", "Quarantine", "Breach Checks", "Password Manager", "Tailscale Devices",
+		"Dashboard", "Antivirus", "Real-time monitoring", "Network Security", "System Integrity", "Security Center", "Quarantine", "Breach Checks", "Protected Files", "Password Manager", "Tailscale Devices",
 		"Settings"
 	};
 
-	private static readonly string[] Glyphs = new string[11]
+	private static readonly string[] Glyphs = new string[12]
 	{
-		"◈", "◎", "◉", "⇄", "◇", "◆", "▣", "◌", "⚿", "⊙",
+		"◈", "◎", "◉", "⇄", "◇", "◆", "▣", "◌", "▤", "⚿", "⊙",
 		"⚙"
 	};
 
@@ -343,7 +344,7 @@ public sealed class Desktop : Form
 		}
 		panel4.AutoScrollMinSize = new Size(0, num);
 		UpdateNavigation(panel4);
-		Label label3 = Label("WINDOWS SECURITY COMPANION\nDevelopment preview · 0.7.0", 8f, palette.Muted);
+		Label label3 = Label("WINDOWS SECURITY COMPANION\nDevelopment preview · 0.8.0", 8f, palette.Muted);
 		label3.Dock = DockStyle.Bottom;
 		label3.Height = (int)TextSize(52f);
 		label3.Visible = appearance.ShowFooter;
@@ -875,6 +876,11 @@ public sealed class Desktop : Form
 				breachDialog.ShowDialog(this);
 			}, primary: true));
 			Note("Coverage has limits", "A result can help you act on known breaches. No service can prove information has never leaked or search every private breach. Email lookup requires your own HIBP API key.");
+			break;
+		case "Protected Files":
+			Header("Protected files", "Encrypt selected personal files, including their internal names, with a separate passphrase.");
+			Note("Protection outside the app", "Encrypted .ftsafe containers stay unreadable without their passphrase. Ordinary copies and permitted exports remain readable. This does not hide the container file or block malware controlling your unlocked account. Enable Windows drive encryption for stolen-device protection.");
+			ActionRow(Button("Open protected files", delegate { using (var safe = new ProtectedFilesDialog(palette)) { safe.Icon = Icon; safe.ShowDialog(this); } }, true));
 			break;
 		case "Password Manager":
 			Header("Passwords", "Store credentials locally and generate distinct passwords for each account.");

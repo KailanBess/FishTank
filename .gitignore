@@ -9,3 +9,12 @@ environment
 *.db
 **/bin/
 **/obj/
+**/data/
+*.dpapi
+*.ftvault
+*.vault
+*.ftsafe
+*.pfx
+*.p12
+*.key
+*.pem

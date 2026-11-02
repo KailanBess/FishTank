@@ -55,11 +55,17 @@ internal sealed class AppLockController : IMessageFilter, IDisposable
     internal void Lock()
     {
         if (locking || disposed) return;
-        if (!AppAccess.Enabled) { status("Set an app password in Settings before using the app lock."); return; }
+        if (!AppAccess.Enabled)
+        {
+            foreach (var vault in Application.OpenForms.OfType<PasswordManagerDialog>().ToArray()) vault.LockForAppLock();
+            foreach (var safe in Application.OpenForms.OfType<ProtectedFilesDialog>().ToArray()) safe.LockForAppLock();
+            status("Open vaults are locked. Set an app password in Settings to lock access to the whole app."); return;
+        }
         locking = true;
         var windows = Application.OpenForms.Cast<Form>().Where(f => !f.IsDisposed).ToList();
         var visible = windows.Where(f => f.Visible).ToList();
         foreach (var vault in windows.OfType<PasswordManagerDialog>()) vault.LockForAppLock();
+        foreach (var safe in windows.OfType<ProtectedFilesDialog>()) safe.LockForAppLock();
         AppAccess.Lock();
         foreach (var form in visible) form.Hide();
         bool unlocked = false;

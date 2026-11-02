@@ -26,7 +26,7 @@ internal static class Program
         SimpleExplanations.Install();
         try
         {
-            string[] pages = { "Dashboard", "Antivirus", "Real-time monitoring", "Network Security", "System Integrity", "Security Center", "Quarantine", "Breach Checks", "Password Manager", "Tailscale Devices", "Settings" };
+            string[] pages = { "Dashboard", "Antivirus", "Real-time monitoring", "Network Security", "System Integrity", "Security Center", "Quarantine", "Breach Checks", "Protected Files", "Password Manager", "Tailscale Devices", "Settings" };
             foreach (string theme in new[] { "Dark", "Light" })
             foreach (int scale in new[] { 100, 150 })
             foreach (bool advanced in new[] { false, true })
@@ -45,7 +45,7 @@ internal static class Program
                         navigate.Invoke(form, new object[] { "Dashboard" });
                         navigate.Invoke(form, new object[] { page });
                         var navigation = Descendants(form).OfType<CleanButton>().Where(b => b.Tag is string).ToArray();
-                        Check(navigation.Length == (advanced ? 11 : 6), "Incorrect navigation count");
+                        Check(navigation.Length == (advanced ? 12 : 7), "Incorrect navigation count");
                         var colors = Palette.From(appearance);
                         foreach (var button in navigation)
                         {
@@ -80,6 +80,14 @@ internal static class Program
                         }
                     }
                     tools.Hide();
+                }
+                using (var safe = new ProtectedFilesDialog(Palette.From(appearance)))
+                {
+                    safe.Size = new Size(760, 600); safe.StartPosition = FormStartPosition.Manual;
+                    safe.Location = new Point(-30000, -30000); safe.ShowInTaskbar = false; safe.Show(); Application.DoEvents();
+                    Check(Descendants(safe).OfType<DataGridView>().Single().Rows.Count == 0, "Locked file container exposed names");
+                    using (var bitmap = new Bitmap(safe.Width, safe.Height)) { safe.DrawToBitmap(bitmap, new Rectangle(Point.Empty, safe.Size)); bitmap.Save(Path.Combine(output, $"protected-{theme}-{scale}-{advanced}.png")); }
+                    safe.Hide();
                 }
             }
             const string password = "Test-only UI lock passphrase 2026!";

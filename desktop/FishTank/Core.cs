@@ -42,7 +42,12 @@ public static class Core
 
 	public static void Init()
 	{
-		Directory.CreateDirectory(Data);
+		RestrictDirectory(Data);
+	}
+
+	internal static void RestrictDirectory(string path)
+	{
+		Directory.CreateDirectory(path);
 		DirectorySecurity directorySecurity = new DirectorySecurity();
 		directorySecurity.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
 		SecurityIdentifier[] array = new SecurityIdentifier[3]
@@ -55,7 +60,7 @@ public static class Core
 		{
 			directorySecurity.AddAccessRule(new FileSystemAccessRule(identity, FileSystemRights.FullControl, InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.None, AccessControlType.Allow));
 		}
-		Directory.SetAccessControl(Data, directorySecurity);
+		Directory.SetAccessControl(path, directorySecurity);
 	}
 
 	public static void Audit(string action, object detail)
