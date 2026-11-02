@@ -42,6 +42,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           ./tests/Check-PowerShell.ps1
           ./tests/Test-Collectors.ps1
+      - name: Isolated-profile resilience checks
+        shell: pwsh
+        run: |
+          dotnet build tests/Resilience/Resilience.csproj -c Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./tests/Resilience/bin/Release/net48/Resilience.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Windows security and UI checks
         shell: pwsh
         run: |

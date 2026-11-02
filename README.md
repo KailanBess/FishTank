@@ -2,7 +2,7 @@
 
 Windows application builds and a self-hosted email/SMS verification backend.
 
-The [0.11.0 desktop preview](packages/FishTank-desktop-preview.zip) adds a [local browser dashboard and organized email/service password vault](docs/BROWSER-AND-ACCOUNT-ORGANIZATION.md). Open Settings → Open browser dashboard to pair locally; see the guide for Windows listener permissions and vault compatibility. It also includes [optional live Defender alerts and tray monitoring](docs/LIVE-DETECTION.md), alongside [disk-health and backup-age warnings](docs/DISK-HEALTH-AND-BACKUP-AGE.md), with separate creation/verification dates and configurable reminders. It retains passphrase-encrypted file containers and verified GitHub installation; see [protection and update setup](docs/PROTECTED-FILES-AND-GITHUB-UPDATES.md). Earlier [security/integrity tools](docs/SECURITY-AND-INTEGRITY.md) remain included. Available cross-platform checks pass; Windows execution, a real signed release/install, and an independent audit remain pending. Original uploaded binaries below remain unchanged.
+The [0.11.1 desktop preview](packages/FishTank-desktop-preview.zip) adds a [local browser dashboard and organized email/service password vault](docs/BROWSER-AND-ACCOUNT-ORGANIZATION.md). Open Settings → Open browser dashboard to pair locally; see the guide for Windows listener permissions and vault compatibility. It also includes [optional live Defender alerts and tray monitoring](docs/LIVE-DETECTION.md), alongside [disk-health and backup-age warnings](docs/DISK-HEALTH-AND-BACKUP-AGE.md), with separate creation/verification dates and configurable reminders. It retains passphrase-encrypted file containers and verified GitHub installation; see [protection and update setup](docs/PROTECTED-FILES-AND-GITHUB-UPDATES.md). Earlier [security/integrity tools](docs/SECURITY-AND-INTEGRITY.md) remain included. Available cross-platform checks pass; Windows execution, a real signed release/install, and an independent audit remain pending. Original uploaded binaries below remain unchanged.
 
 ## Files
 
@@ -30,3 +30,4 @@ These tests exercise SQLite verification state and simulated delivery interfaces
 
 Dashboard, scan scheduling, activity timeline, folder backup reminders, settings search and support-report controls are documented in [APP-INSIGHTS.md](docs/APP-INSIGHTS.md).
 Setup, scan progress/cancellation evidence, recovery, accessibility and signed release preparation are described in [RELEASE-AND-RECOVERY.md](docs/RELEASE-AND-RECOVERY.md).
+Release-readiness findings and the outside-testing guide are in [RELEASE-REVIEW.md](docs/RELEASE-REVIEW.md) and [BETA-TEST-GUIDE.md](docs/BETA-TEST-GUIDE.md).

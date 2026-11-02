@@ -13,9 +13,9 @@ internal static class ProtectedStore
         lock (Gate)
         {
             string path = Path.Combine(Core.Data, name + ".dpapi");
-            if (!File.Exists(path)) return empty();
-            if (new FileInfo(path).Length > 8 * 1024 * 1024) throw new IOException("Saved security data exceeds its size limit.");
-            byte[] plain = ProtectedData.Unprotect(File.ReadAllBytes(path), null, DataProtectionScope.CurrentUser);
+            byte[] encrypted = LocalStoreFiles.ReadOptional(path, 8 * 1024 * 1024);
+            if (encrypted == null) return empty();
+            byte[] plain = ProtectedData.Unprotect(encrypted, null, DataProtectionScope.CurrentUser);
             try { return Core.Parse<T>(Encoding.UTF8.GetString(plain)); }
             finally { Array.Clear(plain, 0, plain.Length); }
         }

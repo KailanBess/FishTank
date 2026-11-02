@@ -87,7 +87,16 @@
     vaultOpen = true; await loadEntries(); message('Vault unlocked. Keep the master passphrase private and make an encrypted backup from the desktop app.');
   }); });
   async function loadEntries() { entries = await api('/api/vault/list'); vaultOpen = true; $('vault-open').hidden = false; $('vault-locked').hidden = true; renderEntries(); }
-  $('lock-vault').addEventListener('click', () => { clearVault(); run(async () => { await api('/api/vault/lock'); await vaultState(); message('Password vault locked.'); }); });
+  $('lock-vault').addEventListener('click', () => {
+    if (busy) return;
+    clearVault();
+    const inputs = [$('master'), $('confirm-master')];
+    inputs.forEach(input => { input.disabled = true; });
+    run(async () => {
+      try { await api('/api/vault/lock'); await vaultState(); message('Password vault locked.'); }
+      finally { inputs.forEach(input => { input.disabled = false; }); }
+    });
+  });
   function actionButton(text, action, quiet = true) { const button = node('button', text, quiet ? 'quiet' : ''); button.type = 'button'; button.addEventListener('click', action); return button; }
   function matches(entry, query) { return [entry.Title, entry.Username, entry.Website, entry.ConnectedEmail, entry.Email].join(' ').toLowerCase().includes(query); }
   function serviceCard(entry) {

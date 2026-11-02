@@ -510,7 +510,7 @@ public sealed partial class Desktop : Form
 		}
 		panel4.AutoScrollMinSize = new Size(0, num);
 		UpdateNavigation(panel4);
-		Label label3 = Label("WINDOWS SECURITY COMPANION\nDevelopment preview · 0.11.0", 8f, palette.Muted);
+		Label label3 = Label("WINDOWS SECURITY COMPANION\nDevelopment preview · 0.11.1", 8f, palette.Muted);
 		label3.Dock = DockStyle.Bottom;
 		label3.Height = (int)TextSize(52f);
 		label3.Visible = appearance.ShowFooter;
@@ -1066,69 +1066,9 @@ public sealed partial class Desktop : Form
 			Note("Choose your password length", "Generate 1–65,536 characters, subject to the selected character sets. Choose uppercase, lowercase, digits, symbols and lookalike exclusions. Generation works offline; websites may impose smaller limits.");
 			break;
 		case "Settings":
-		{
-			Header("Settings", "Choose a simple view or explore advanced tools.");
+            Header("Settings", "Find everyday preferences here. Occasional tools are in More tools.");
             AddAppSettings();
-			AddViewControls();
-            Note("Local browser dashboard", "Open FishTank in a browser on this PC. Pairing links last one minute and work once. Browser access locks with the app and after five minutes without an action. This does not expose a website to your network.");
-            ActionRow(Button("Open browser dashboard", OpenBrowserDashboard, true), Button("Stop browser dashboard", StopBrowserDashboard, false));
-            ActionRow(Button("Locking, reminders and verified updates", OpenSecurityTools, false));
-			Surface surface = Card(195);
-			Label label = Label("Appearance & accessibility", 18f, palette.Text);
-			label.Font = Face(18f, FontStyle.Bold);
-			label.Dock = DockStyle.Top;
-			label.Height = 42;
-			Label label2 = Label("Themes, accents, icon colors, fonts, spacing and dashboard layout.\nPreview changes live, then save or revert.", 11f, palette.Muted);
-			label2.Dock = DockStyle.Top;
-			label2.Height = 70;
-			CleanButton cleanButton = Button("Customize FishTank", Customize, primary: true);
-			cleanButton.Dock = DockStyle.Bottom;
-			surface.Controls.Add(cleanButton);
-			surface.Controls.Add(label2);
-			surface.Controls.Add(label);
-			AddBlock(surface, 210);
-			Note(AppAccess.Enabled ? "App password is enabled" : "App password is off", "Require a separate password to open this data profile through the desktop or interactive CLI. The password vault still needs its own master passphrase. The background service stays independent.");
-			ActionRow(Button(AppAccess.Enabled ? "Change app password" : "Set app password", delegate
-			{
-				AppAccessSettings.Change(this);
-				RenderPage();
-			}, primary: true), Button("Remove app password", delegate
-			{
-				AppAccessSettings.Remove(this);
-				RenderPage();
-			}, primary: false), Button("Lock and return to sign in", delegate
-			{
-				if (!AppAccess.Enabled)
-				{
-					ShowMessage("Set a password first", "Enable an app password before locking access.");
-				}
-				else
-				{
-					appLock.Lock();
-				}
-			}, primary: false));
-			MfaStatus mfa = AppAccess.Mfa;
-			Note("Optional multifactor authentication", (!mfa.Configured) ? "Authenticator MFA is not enrolled. Add an external authenticator and one-use recovery codes, then choose whether to require them at sign-in." : ("Authenticator enrolled · Sign-in MFA " + (mfa.AskOnSignIn ? "on" : "off (password only)") + " · Recovery codes remaining: " + mfa.RecoveryCodesRemaining + ". Security changes still require MFA verification."));
-			ActionRow(Button("Multifactor authentication", delegate
-			{
-				using (MfaSettingsDialog mfaSettingsDialog = new MfaSettingsDialog(palette))
-				{
-					mfaSettingsDialog.Icon = base.Icon;
-					mfaSettingsDialog.ShowDialog(this);
-				}
-				RenderPage();
-			}, primary: true));
-			Note("Protection preferences", "Defender controls antivirus exclusions, scan schedules and engine behavior. FishTank appearance settings never change Windows security settings.");
-			ActionRow(Button("Update Defender signatures", delegate
-			{
-				if (Confirm("Ask Defender to download signature updates using its current policy?"))
-				{
-					StartWork(Core.UpdateSignatures, "Message");
-				}
-			}, primary: false));
-			Note("Local storage", Core.Data + "\nBreach checks contact external services only with consent. Password vaults are local and excluded from remote management. Service installation remains opt-in.");
-			break;
-		}
+            break;
 		}
 		FitPage();
 	}

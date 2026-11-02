@@ -27,6 +27,8 @@ public sealed partial class Desktop
     {
         EvidenceSnapshot snapshot = null;
         var issues = new List<Tuple<string, Action>>();
+        string updateRecovery = UpdateRecoveryStatus.Notice();
+        if (updateRecovery != null) issues.Add(Tuple.Create(updateRecovery, (Action)(() => OpenToolsTab("Downloads and updates"))));
         try
         {
             snapshot = SecurityReviews.Latest("SecurityHealth");
@@ -95,9 +97,12 @@ public sealed partial class Desktop
 
     private void AddAppSettings()
     {
-        ActionRow(Button("First-run setup", OpenInitialSetup, false), Button("Recovery center", OpenRecoveryCenter, false), Button("Accessibility help", OpenAccessibilityHelp, false), Button("Signed release readiness", OpenReleaseReadiness, false));
-        ActionRow(Button("Search settings", OpenSettingsSearch, true), Button("Scan scheduling", OpenScanSchedule, false),
-            Button("Folder backup reminders", OpenFolderReminders, false), Button("Preview support report", OpenSupportReport, false));
+        ActionRow(Button("Search settings", OpenSettingsSearch, true));
+        InsightNote("Appearance and app access", "Choose readable colors and text, or manage your app password, authenticator and locking preferences.");
+        ActionRow(Button("Appearance & accessibility", Customize, false), Button("App access & MFA", OpenAccessSettings, false), Button("Locking & notifications", () => OpenToolsTab("Locking and reminders"), false));
+        InsightNote("Automation and connections", "Choose scheduled scans, track backup reminders, or manage the local browser dashboard.");
+        ActionRow(Button("Scan scheduling", OpenScanSchedule, false), Button("Backup reminders", OpenFolderReminders, false), Button("Browser dashboard", OpenBrowserControls, false));
+        ActionRow(Button("More tools", OpenMoreTools, false), Button("Recovery center", OpenRecoveryCenter, false));
     }
 
     private Form UtilityDialog(string title, out FlowLayoutPanel content)
@@ -220,7 +225,7 @@ public sealed partial class Desktop
             var list = new ListBox { Height = 320, AccessibleName = "Matching settings" };
             var destinations = new[] {
                 Tuple.Create("Appearance and accessibility · theme accent font text size spacing reduced motion", (Action)Customize),
-                Tuple.Create("App password and sign-in · change remove lock", (Action)(() => { Navigate("Settings"); })),
+                Tuple.Create("App password and sign-in · change remove lock", (Action)OpenAccessSettings),
                 Tuple.Create("Multifactor authentication · MFA authenticator recovery codes email SMS", (Action)(() => { using (var mfa = new MfaSettingsDialog(palette)) mfa.ShowDialog(this); })),
                 Tuple.Create("Scan scheduling · automatic daily weekly quick full antivirus", (Action)OpenScanSchedule),
                 Tuple.Create("Important folder backup reminders · folders copy overdue", (Action)OpenFolderReminders),
@@ -229,7 +234,7 @@ public sealed partial class Desktop
                 Tuple.Create("Downloads and updates · GitHub publisher signature checksum", (Action)(() => OpenToolsTab("Downloads and updates"))),
                 Tuple.Create("Folder integrity · baseline exclusions scheduled comparisons", (Action)(() => OpenToolsTab("Folder integrity"))),
                 Tuple.Create("Protection health · firewall disk startup privacy permissions", (Action)(() => OpenToolsTab("Security reviews"))),
-                Tuple.Create("Local browser dashboard · pairing session browser access", (Action)(() => Navigate("Settings"))),
+                Tuple.Create("Local browser dashboard · pairing session browser access", (Action)OpenBrowserControls),
                 Tuple.Create("Live monitoring · Defender detections background alerts tray", (Action)(() => Navigate("Real-time monitoring"))),
                 Tuple.Create("Activity timeline · scans quarantine backups updates history", (Action)OpenActivityTimeline),
                 Tuple.Create("First-run setup · onboarding password protection reminders", (Action)OpenInitialSetup),

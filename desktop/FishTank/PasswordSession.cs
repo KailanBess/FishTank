@@ -107,7 +107,7 @@ public sealed class PasswordSession : IDisposable
 	{
 		if (IsUnlocked)
 		{
-			return (utcNow - LastActivityUtc).TotalMinutes >= 5.0;
+			return utcNow < LastActivityUtc || (utcNow - LastActivityUtc).TotalMinutes >= 5.0;
 		}
 		return false;
 	}

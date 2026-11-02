@@ -104,6 +104,7 @@ public sealed partial class Desktop
             panel.Controls.Add(UtilityButton("Open quarantine in Advanced view", () => { dialog.Close(); if (!appearance.AdvancedMode) { var saved = appearance.Copy(); saved.AdvancedMode = true; AppearanceStore.Save(saved); appearance = saved; current = "Quarantine"; BuildShell(); } else Navigate("Quarantine"); StartWork(Vault.List, "Vault"); }));
             panel.Controls.Add(UtilityButton("Verify backup or test restore in isolation", () => OpenToolsTab("Backup and recovery")));
             panel.Controls.Add(UtilityButton("Review important folder backup reminders", OpenFolderReminders));
+            panel.Controls.Add(UtilityButton("Review installation and rollback result", () => OpenToolsTab("Downloads and updates")));
             panel.Controls.Add(UtilityButton("Review authenticator recovery-code status", () => { using (var mfa = new MfaSettingsDialog(palette)) mfa.ShowDialog(dialog); }));
             panel.Controls.Add(UtilityButton("Open Windows recovery options", () => System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("ms-settings:recovery") { UseShellExecute = true })));
             Help(panel, "Keep your vault master passphrase and BitLocker recovery information on separate storage. An older backup can contain older passwords. FishTank cannot recover a lost vault passphrase. Use Windows Security for Defender-managed quarantine; FishTank’s manual quarantine is separate.");

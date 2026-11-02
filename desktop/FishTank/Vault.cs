@@ -215,26 +215,24 @@ public static class Vault
 		destination = Path.GetFullPath(destination);
 		Check(destination);
 		List<SafeFileHandle> list = LockParents(destination);
+        byte[] restored = null;
 		try
 		{
 			Dictionary<string, object> dictionary = Read(id);
 			Dictionary<string, object> dictionary2 = (Dictionary<string, object>)dictionary["entry"];
-			byte[] array = Convert.FromBase64String((string)dictionary["content"]);
+			byte[] array = restored = Convert.FromBase64String((string)dictionary["content"]);
 			if (Hex(Digest(array)) != (string)dictionary2["Sha256"])
 			{
 				throw new CryptographicException("Vault hash mismatch");
 			}
 			Core.Audit("restore-request", new { id, destination });
-			using (FileStream fileStream = new FileStream(destination, FileMode.CreateNew, FileAccess.Write, FileShare.None))
-			{
-				fileStream.Write(array, 0, array.Length);
-				fileStream.Flush(flushToDisk: true);
-			}
+            RestoreFileWriter.WriteNew(destination, array);
 			Array.Clear(array, 0, array.Length);
 			Core.Audit("restore-complete", new { id, destination });
 		}
 		finally
 		{
+            if (restored != null) Array.Clear(restored, 0, restored.Length);
 			foreach (SafeFileHandle item in list)
 			{
 				item.Dispose();

@@ -32,6 +32,13 @@ jobs:
         run: |
           & ./tests/WindowsSecurity/bin/Release/net48/WindowsSecurity.exe
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Exercise isolated-profile failures and recovery
+        shell: pwsh
+        run: |
+          dotnet build tests/Resilience/Resilience.csproj -c Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./tests/Resilience/bin/Release/net48/Resilience.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build Windows UI regression checks
         run: dotnet build tests/WindowsUi/WindowsUi.csproj -c Release
       - name: Exercise pages and capture screenshots

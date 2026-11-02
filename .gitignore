@@ -20,3 +20,5 @@ environment
 *.pem
 
 browser-artifacts/
+
+test-artifacts/

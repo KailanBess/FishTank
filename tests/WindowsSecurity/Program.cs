@@ -60,7 +60,7 @@ internal static class Program
             string activeHash = DownloadChecksum.Compute(active);
             Check(BackupHistory.Status().Single(x => x.Name == "Password vault backup age").State == "No issue observed", "Newly created backup date was not recorded");
             var oldRecords = ProtectedStore.Read("backup-history", () => new System.Collections.Generic.List<BackupObservation>());
-            oldRecords.Single().CreatedUtc = DateTime.UtcNow.AddDays(-8);
+            oldRecords.Single(x => x.Kind == BackupHistory.PasswordVault && x.Path == backup).CreatedUtc = DateTime.UtcNow.AddDays(-8);
             ProtectedStore.Write("backup-history", oldRecords);
             using (var checkedBackup = PasswordSession.Open(backup, pass)) BackupHistory.Verified(BackupHistory.PasswordVault, backup, checkedBackup.ContentSha256, false);
             Check(BackupHistory.Status().Single(x => x.Name == "Password vault backup age").State == "Review", "Reverification made an old backup look newly created");

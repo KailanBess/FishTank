@@ -12,12 +12,15 @@ internal sealed class BrowserBackend : IDisposable
     private readonly Func<bool> quickScan;
     private PasswordSession vault;
     private DateTime nextUnlock;
+    private bool disposed;
+    private void RequireOpen() { if (disposed) throw new ObjectDisposedException(nameof(BrowserBackend)); }
     internal BrowserBackend(Func<string> status, Func<bool> quickScan) { this.status = status; this.quickScan = quickScan; }
     internal void Lock() { lock (gate) { vault?.Dispose(); vault = null; } }
     internal void CheckIdle() { lock (gate) if (vault != null && vault.ShouldAutoLock(DateTime.UtcNow)) { vault.Dispose(); vault = null; } }
-    internal Task<string> Execute(string path, string body) => Task.Run(() => Run(path, body));
+    internal Task<string> Execute(string path, string body) { lock (gate) RequireOpen(); return Task.Run(() => Run(path, body)); }
     private string Run(string path, string body)
     {
+        lock (gate) RequireOpen();
         if (path == "/api/status") { CheckIdle(); return status(); }
         if (path == "/api/check/security") return SecurityReviews.Run("SecurityHealth", false);
         if (path == "/api/check/disk") return DiskHealthChecks.Run();
@@ -25,6 +28,7 @@ internal sealed class BrowserBackend : IDisposable
         if (path == "/api/backups") return BackupHistory.Report();
         lock (gate)
         {
+            RequireOpen();
             CheckIdle();
             if (path == "/api/vault/state") return Core.Json(new { exists = File.Exists(PasswordSession.DefaultPath), unlocked = vault != null });
             if (path == "/api/vault/lock") { Lock(); return "{}"; }
@@ -67,7 +71,7 @@ internal sealed class BrowserBackend : IDisposable
             throw new BrowserRequestException(404, "Unknown dashboard action.");
         }
     }
-    public void Dispose() => Lock();
+    public void Dispose() { lock (gate) { disposed = true; vault?.Dispose(); vault = null; } }
     public sealed class UnlockCommand { public string Master { get; set; } public string Confirm { get; set; } }
     public sealed class IdCommand { public string Id { get; set; } }
 }

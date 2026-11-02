@@ -15,7 +15,7 @@ internal static class InsightsUiChecks
         using (var owner = new Desktop())
         {
             owner.StartPosition = FormStartPosition.Manual; owner.Location = new Point(-30000, -30000); owner.ShowInTaskbar = false; owner.Show();
-            foreach (string method in new[] { "OpenScanSchedule", "OpenFolderReminders", "OpenSettingsSearch", "OpenSupportReport", "OpenActivityTimeline", "OpenInitialSetup", "OpenRecoveryCenter", "OpenAccessibilityHelp", "OpenReleaseReadiness" })
+            foreach (string method in new[] { "OpenScanSchedule", "OpenFolderReminders", "OpenSettingsSearch", "OpenSupportReport", "OpenActivityTimeline", "OpenInitialSetup", "OpenRecoveryCenter", "OpenAccessibilityHelp", "OpenReleaseReadiness", "OpenAccessSettings", "OpenBrowserControls", "OpenMoreTools" })
             {
                 Exception failure = null; bool visited = false;
                 using (var timer = new Timer { Interval = 250 })

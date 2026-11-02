@@ -16,7 +16,16 @@ public static class AppAccess
 
 	public static bool SessionUnlocked { get; private set; }
 
-	public static bool Enabled => File.Exists(Store);
+    public static bool Enabled
+    {
+        get
+        {
+            try { return LocalStoreFiles.Exists(Store); }
+            catch (IOException) { return true; } // Unknown access state must still require sign-in.
+            catch (InvalidDataException) { return true; }
+            catch (UnauthorizedAccessException) { return true; }
+        }
+    }
 
 	public static MfaStatus Mfa
 	{
@@ -46,15 +55,9 @@ public static class AppAccess
 
 	private static AccessRecord Read()
 	{
-		if (!Enabled)
-		{
-			return null;
-		}
-		if (new FileInfo(Store).Length > 8192)
-		{
-			throw new InvalidDataException("App access settings are invalid. Access remains locked.");
-		}
-		byte[] array = ProtectedData.Unprotect(File.ReadAllBytes(Store), null, DataProtectionScope.CurrentUser);
+        byte[] encrypted = LocalStoreFiles.ReadOptional(Store, 8192);
+        if (encrypted == null) return null;
+        byte[] array = ProtectedData.Unprotect(encrypted, null, DataProtectionScope.CurrentUser);
 		try
 		{
 			AccessRecord accessRecord = Core.Parse<AccessRecord>(Encoding.UTF8.GetString(array));
