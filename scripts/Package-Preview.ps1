@@ -17,6 +17,7 @@ try{
   'desktop/bin/Release/cli/net48/FishTank.Cli.exe.config',
   'docs/UI-REVIEW.md',
   'docs/APP-INSIGHTS.md',
+  'docs/RELEASE-AND-RECOVERY.md',
   'docs/SECURITY-AND-INTEGRITY.md',
   'docs/PROTECTED-FILES-AND-GITHUB-UPDATES.md',
   'docs/DISK-HEALTH-AND-BACKUP-AGE.md',

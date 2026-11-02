@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Windows.Forms;
 
 namespace FishTank;
 
@@ -53,8 +54,17 @@ public sealed class Palette
 		return fallback;
 	}
 
-	public static Palette From(Appearance a)
+	public static Palette From(Appearance a) => From(a, SystemInformation.HighContrast);
+
+    internal static Palette From(Appearance a, bool highContrast)
 	{
+        if (highContrast) return new Palette {
+            Background = SystemColors.Window, Sidebar = SystemColors.Window,
+            Surface = SystemColors.Window, Surface2 = SystemColors.Highlight,
+            Text = SystemColors.WindowText, Muted = SystemColors.WindowText,
+            Line = SystemColors.WindowText, Accent = SystemColors.Highlight,
+            AccentText = SystemColors.HighlightText
+        };
 		Palette palette = new Palette();
 		bool flag = a.Theme == "Light";
 		Color color = ((a.Theme == "Midnight") ? Color.FromArgb(10, 13, 21) : ((a.Theme == "Ocean") ? Color.FromArgb(12, 29, 40) : ((a.Theme == "Plum") ? Color.FromArgb(28, 21, 39) : Color.FromArgb(19, 23, 33))));

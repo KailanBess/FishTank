@@ -18,6 +18,7 @@ internal static class Program
         try
         {
             AppInsightsChecks.Run(Check);
+            PolishChecks.Run(Check);
             var prefs = SecurityPreferences.Load();
             Check(prefs.IdleMinutes == 5 && prefs.LockWithWindows, "Safe lock defaults");
             SecurityPreferences.Save(prefs);

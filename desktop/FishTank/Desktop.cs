@@ -30,7 +30,7 @@ public sealed partial class Desktop : Form
 	private FolderMonitor monitor = new FolderMonitor();
 
 	private bool busy;
-	internal bool HasRunningOperation => busy || (securityScheduler?.IsScanning ?? false);
+	internal bool HasRunningOperation => busy || foregroundScan?.IsRunning == true || (securityScheduler?.IsScanning ?? false);
 
 	private bool observing;
 
@@ -111,6 +111,8 @@ public sealed partial class Desktop : Form
 		base.StartPosition = FormStartPosition.CenterScreen;
 		base.AutoScaleMode = AutoScaleMode.Dpi;
 		DoubleBuffered = true;
+        KeyPreview = true;
+        Microsoft.Win32.SystemEvents.UserPreferenceChanged += SystemPreferencesChanged;
 		using (Stream stream = typeof(Desktop).Assembly.GetManifestResourceStream("FishTank.png"))
 		{
 			if (stream != null)
@@ -138,10 +140,11 @@ public sealed partial class Desktop : Form
 		liveDetection = new LiveDetectionSession(NotifyLiveDetection);
 		BuildShell();
 		appLock = new AppLockController(this, SetStatus);
-		securityScheduler = new SecurityScheduler(NotifySecurity, () => busy || Application.OpenForms.Cast<Form>().Any(form => form.Modal), ScheduledScanFinished);
+		securityScheduler = new SecurityScheduler(NotifySecurity, () => HasRunningOperation || Application.OpenForms.Cast<Form>().Any(form => form.Modal), ScheduledScanFinished);
 		liveDisplay = new System.Windows.Forms.Timer { Interval = 2000 };
-		liveDisplay.Tick += delegate { RefreshLiveDisplay(); browserBackend?.CheckIdle(); if (browser != null && !BrowserAccessAllowed()) LockBrowserSession(); }; liveDisplay.Start();
+		liveDisplay.Tick += delegate { RefreshLiveDisplay(); DispatchNotification(); browserBackend?.CheckIdle(); if (browser != null && !BrowserAccessAllowed()) LockBrowserSession(); }; liveDisplay.Start();
 		bool liveStarted = false;
+        Shown += delegate { BeginInvoke((Action)OfferInitialSetup); };
 		Shown += delegate {
 			if (liveStarted) return; liveStarted = true;
 			try { if (SecurityPreferences.Load().LiveDetectionEnabled) liveDetection.Start(); }
@@ -173,9 +176,10 @@ public sealed partial class Desktop : Form
 		if (disposing && !resourcesDisposed)
 		{
 			resourcesDisposed = true;
+            Microsoft.Win32.SystemEvents.UserPreferenceChanged -= SystemPreferencesChanged;
 			browser?.Dispose(); browserBackend?.Dispose();
 			liveDisplay?.Dispose(); liveDetection?.Dispose(); appLock?.Dispose(); securityScheduler?.Dispose(); securityIcon?.Dispose(); trayMenu?.Dispose();
-			monitor.Dispose(); tips.Dispose(); artwork?.Dispose(); displayArtwork?.Dispose(); ownedIcon?.Dispose();
+			scanWindow?.Dispose(); monitor.Dispose(); tips.Dispose(); artwork?.Dispose(); displayArtwork?.Dispose(); ownedIcon?.Dispose();
 		}
 		base.Dispose(disposing);
 	}
@@ -192,10 +196,10 @@ public sealed partial class Desktop : Form
         events = liveDetection.Events().TakeLastCompatible(50).Select(e => new { e.Kind, e.Summary, recorded = e.RecordedUtc.ToLocalTime().ToString("g") })
     }));
     private bool BrowserQuickScan() => BrowserUi(() => {
-        if (!BrowserAccessAllowed() || busy) return false;
+        if (!BrowserAccessAllowed() || HasRunningOperation) return false;
         if (!Confirm("The paired local browser requests a Defender quick scan. Run it?\n\nExisting Defender policy may quarantine or remove detected threats.")) return false;
         if (!BrowserAccessAllowed()) return false;
-        StartWork(() => Core.Scan("Quick", null), "Scan"); return true;
+        StartVisibleScan("Quick", null); return true;
     });
     private void OpenBrowserDashboard()
     {
@@ -227,7 +231,8 @@ public sealed partial class Desktop : Form
 		{
 			if (!SecurityPreferences.Load().DesktopNotifications) return;
 			EnsureTray();
-			securityIcon.ShowBalloonTip(8000, "FishTank security", "A security reminder or integrity review needs attention. Open FishTank to review it.", ToolTipIcon.Info);
+			notificationTarget = NotificationDestination.For(message);
+            securityIcon.ShowBalloonTip(8000, "FishTank security", "A security reminder or integrity review needs attention. Open FishTank to review it.", ToolTipIcon.Info);
 		}
 		catch { /* The saved report/status remains available if Windows notifications are unavailable. */ }
 	}
@@ -241,6 +246,7 @@ public sealed partial class Desktop : Form
 			trayMenu.Items.Add("Exit FishTank (stops live alerts)", null, delegate { RequestTrayExit(); });
 			securityIcon = new NotifyIcon { Icon = SystemIcons.Shield, Text = "FishTank", ContextMenuStrip = trayMenu };
 			securityIcon.DoubleClick += delegate { RestoreFromTray(); };
+            securityIcon.BalloonTipClicked += delegate { OpenNotification(); };
 		}
 		securityIcon.Visible = true;
 	}
@@ -269,7 +275,7 @@ public sealed partial class Desktop : Form
 			if (IsDisposed || !liveDetection.Enabled) return;
 			SetStatus("Live Defender alert: " + item.Kind + ". Open Monitoring to review the source evidence.");
 			RefreshLiveDisplay();
-			try { if (SecurityPreferences.Load().LiveDetectionNotifications) { EnsureTray(); securityIcon.ShowBalloonTip(8000, "FishTank · Defender activity", "Defender activity or a monitoring coverage gap needs review. Open FishTank → Monitoring. No file paths are shown in notifications.", ToolTipIcon.Warning); } }
+			try { if (SecurityPreferences.Load().LiveDetectionNotifications) { EnsureTray(); notificationTarget = "Monitoring"; securityIcon.ShowBalloonTip(8000, "FishTank · Defender activity", "Defender activity or a monitoring coverage gap needs review. Open FishTank → Monitoring. No file paths are shown in notifications.", ToolTipIcon.Warning); } }
 			catch { /* Event history and coverage status remain available. */ }
 		}); } catch (InvalidOperationException) { }
 	}
@@ -329,12 +335,6 @@ public sealed partial class Desktop : Form
 		catch { Note("Monitoring preferences unknown", "Preferences could not be read. No background setting was silently enabled."); }
 	}
 
-	protected override bool ProcessCmdKey(ref Message message, Keys keys)
-	{
-		if (keys == (Keys.Control | Keys.Shift | Keys.L)) { appLock?.Lock(); return true; }
-		return base.ProcessCmdKey(ref message, keys);
-	}
-
 	private float TextSize(float size)
 	{
 		return size * (float)appearance.TextScale / 100f;
@@ -349,6 +349,7 @@ public sealed partial class Desktop : Form
 	{
 		Label label = new Label();
 		label.Text = text;
+        label.AccessibleName = text;
 		label.AutoSize = false;
 		label.ForeColor = color;
 		label.BackColor = Color.Transparent;
@@ -376,6 +377,8 @@ public sealed partial class Desktop : Form
 		cleanButton.Radius = ((appearance.CornerRadius >= 0) ? appearance.CornerRadius : ((appearance.Shape == "Rounded") ? 10 : 0));
 		CleanButton cleanButton2 = cleanButton;
 		cleanButton2.AccessibleName = text;
+        cleanButton2.AccessibleRole = AccessibleRole.PushButton;
+        cleanButton2.AccessibleDescription = text + ". Press Enter or Space to activate.";
 		cleanButton2.Click += delegate
 		{
 			if (busy && !allowWhileBusy)
@@ -400,6 +403,9 @@ public sealed partial class Desktop : Form
 		if (status != null && !status.IsDisposed)
 		{
 			status.Text = text;
+            status.AccessibleName = "Application status";
+            status.AccessibleDescription = text;
+            status.AccessibleRole = AccessibleRole.StatusBar;
 			string text2 = text.ToLowerInvariant();
 			status.ForeColor = Palette.Override(text2.Contains("failed") ? appearance.WarningColor : (text2.Contains("working") ? appearance.RunningColor : (text2.Contains("completed") ? appearance.ReadyColor : "")), palette.Muted);
 		}
@@ -504,7 +510,7 @@ public sealed partial class Desktop : Form
 		}
 		panel4.AutoScrollMinSize = new Size(0, num);
 		UpdateNavigation(panel4);
-		Label label3 = Label("WINDOWS SECURITY COMPANION\nDevelopment preview · 0.10.0", 8f, palette.Muted);
+		Label label3 = Label("WINDOWS SECURITY COMPANION\nDevelopment preview · 0.11.0", 8f, palette.Muted);
 		label3.Dock = DockStyle.Bottom;
 		label3.Height = (int)TextSize(52f);
 		label3.Visible = appearance.ShowFooter;
@@ -528,7 +534,7 @@ public sealed partial class Desktop : Form
 			BackColor = palette.Background,
 			Padding = new Padding(0, 0, 0, 12)
 		};
-		if (appearance.BackgroundStyle != "Plain")
+		if (!SystemInformation.HighContrast && appearance.BackgroundStyle != "Plain")
 		{
 			pageFlow.BackColor = Color.Transparent;
 		}
@@ -1753,7 +1759,7 @@ public sealed partial class Desktop : Form
 	{
 		if (Confirm("Run a " + kind.ToLowerInvariant() + " Defender scan?\n\nExisting Defender policy may quarantine or remove detected threats."))
 		{
-			StartWork(() => Core.Scan(kind, null), "Scan");
+			StartVisibleScan(kind, null);
 		}
 	}
 
@@ -1762,7 +1768,7 @@ public sealed partial class Desktop : Form
 		string path = (folder ? PickFolder() : PickFile());
 		if (path != null)
 		{
-			StartWork(() => Core.Scan("Custom", path), "Scan");
+			StartVisibleScan("Custom", path);
 		}
 	}
 

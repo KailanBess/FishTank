@@ -24,6 +24,8 @@ try{
  $private=@($imported | Where-Object HasPrivateKey)
  if($private.Count -ne 1){throw 'Use one release-signing certificate with its private key.'}
  $certificate=$private[0]
+ if($certificate.NotBefore.ToUniversalTime() -gt [DateTime]::UtcNow -or $certificate.NotAfter.ToUniversalTime() -le [DateTime]::UtcNow){throw 'Signing certificate is not currently valid.'}
+ if(@($certificate.Extensions | Where-Object {$_.Oid.Value -eq '2.5.29.37'} | ForEach-Object {$_.EnhancedKeyUsages} | Where-Object {$_.Value -eq '1.3.6.1.5.5.7.3.3'}).Count -eq 0){throw 'Use a certificate explicitly authorized for code signing.'}
  foreach($file in $files){
   & $signer.FullName sign /s $storeName /sha1 $certificate.Thumbprint /fd SHA256 /tr $timestamp.AbsoluteUri /td SHA256 $file
   if($LASTEXITCODE -ne 0){throw 'Authenticode signing failed.'}

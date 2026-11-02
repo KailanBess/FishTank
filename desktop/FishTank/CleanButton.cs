@@ -75,6 +75,16 @@ public sealed class CleanButton : Button
 
 	protected override void OnPaint(PaintEventArgs e)
 	{
+        if (SystemInformation.HighContrast)
+        {
+            e.Graphics.Clear(Enabled && Focused ? SystemColors.Highlight : SystemColors.Control);
+            ControlPaint.DrawBorder(e.Graphics, ClientRectangle, SystemColors.WindowText, ButtonBorderStyle.Solid);
+            TextRenderer.DrawText(e.Graphics, Text, Font, Rectangle.Inflate(ClientRectangle, -8, -3),
+                !Enabled ? SystemColors.GrayText : Focused ? SystemColors.HighlightText : SystemColors.ControlText,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
+            if (Focused) ControlPaint.DrawFocusRectangle(e.Graphics, Rectangle.Inflate(ClientRectangle, -4, -4));
+            return;
+        }
 		if (Width < 4 || Height < 4) return;
 		e.Graphics.Clear(Parent?.BackColor ?? BackColor);
 		e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;

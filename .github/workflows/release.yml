@@ -26,6 +26,13 @@ jobs:
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           dotnet-version: 8.0.x
+      - name: Check release signing readiness
+        shell: powershell
+        env:
+          FISHTANK_SIGNING_PFX_BASE64: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 }}
+          FISHTANK_SIGNING_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PASSWORD }}
+          FISHTANK_TIMESTAMP_URL: ${{ vars.WINDOWS_TIMESTAMP_URL }}
+        run: ./scripts/Test-ReleaseReadiness.ps1 -Tag $env:FISHTANK_RELEASE_TAG -RequireSigningConfiguration
       - name: Logic and collector fixture tests
         shell: pwsh
         run: |
@@ -59,6 +66,9 @@ jobs:
           FISHTANK_SIGNING_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PASSWORD }}
           FISHTANK_TIMESTAMP_URL: ${{ vars.WINDOWS_TIMESTAMP_URL }}
         run: ./scripts/Sign-Release.ps1 -Tag $env:FISHTANK_RELEASE_TAG
+      - name: Package verified signed bundle
+        shell: powershell
+        run: ./scripts/Package-SignedRelease.ps1 -Tag $env:FISHTANK_RELEASE_TAG
       - name: Publish complete signed release
         shell: pwsh
         env:
@@ -68,7 +78,7 @@ jobs:
           Signed FishTank desktop and CLI update. Configure an independently verified publisher certificate SHA-256 pin in the app before installing. GitHub assets must include SHA-256 digest metadata; the app never falls back to unsigned updates. User data is not included in these assets.
           '@
           $notes | Set-Content -LiteralPath release-notes.txt -Encoding utf8
-          gh release create $env:FISHTANK_RELEASE_TAG ./desktop/bin/Release/net48/FishTank.exe ./desktop/bin/Release/cli/net48/FishTank.Cli.exe ./packages/PublisherCertificateSha256.txt --verify-tag --draft --title "FishTank $env:FISHTANK_RELEASE_TAG" --notes-file release-notes.txt
+          gh release create $env:FISHTANK_RELEASE_TAG ./desktop/bin/Release/net48/FishTank.exe ./desktop/bin/Release/cli/net48/FishTank.Cli.exe ./packages/PublisherCertificateSha256.txt ./packages/SHA256SUMS.txt "./packages/FishTank-${env:FISHTANK_RELEASE_TAG}-signed.zip" --verify-tag --draft --title "FishTank $env:FISHTANK_RELEASE_TAG" --notes-file release-notes.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           gh release edit $env:FISHTANK_RELEASE_TAG --draft=false --latest
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

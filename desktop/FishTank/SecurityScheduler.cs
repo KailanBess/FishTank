@@ -10,7 +10,8 @@ internal sealed class SecurityScheduler : IDisposable
     private readonly Action<string> notify;
     private readonly Func<bool> deferScan;
     private readonly Action<string> scanFinished;
-    internal bool IsScanning { get; private set; }
+    internal ScanOperation Scan { get; private set; }
+    internal bool IsScanning => Scan?.IsRunning == true;
     private bool working;
     private bool disposed;
     private bool checkedGitHub;
@@ -81,20 +82,10 @@ internal sealed class SecurityScheduler : IDisposable
     {
         var schedule = ScanScheduleStore.ClaimDue(now);
         if (schedule == null) return;
-        IsScanning = true;
+        Scan = new ScanOperation(schedule.Kind, null);
         AppActivity.Record("Scans", "Scheduled " + schedule.Kind + " scan started");
-        string result;
-        try
-        {
-            string json = await Task.Run(() => Core.Scan(schedule.Kind, null));
-            var report = Core.Parse<System.Collections.Generic.Dictionary<string, object>>(json);
-            result = schedule.Kind + " scan · " + DateTime.Now.ToString("g") + " · " + Convert.ToString(report["interpretation"]);
-        }
-        catch (Exception ex)
-        {
-            result = "Scheduled scan could not complete (" + ex.GetType().Name + "). Review Windows Security and activity history; a delegated operation may still be running.";
-        }
-        finally { IsScanning = false; }
+        await Scan.RunAsync();
+        string result = schedule.Kind + " scan · " + DateTime.Now.ToString("g") + " · " + Scan.Result + (Scan.CancelRequested ? " " + Scan.Cancellation : "");
         ScanScheduleStore.Finish(result);
         AppActivity.Record("Scans", result);
         if (!disposed) { scanFinished?.Invoke(result); notify(result); }

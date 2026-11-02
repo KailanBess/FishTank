@@ -15,7 +15,7 @@ internal static class InsightsUiChecks
         using (var owner = new Desktop())
         {
             owner.StartPosition = FormStartPosition.Manual; owner.Location = new Point(-30000, -30000); owner.ShowInTaskbar = false; owner.Show();
-            foreach (string method in new[] { "OpenScanSchedule", "OpenFolderReminders", "OpenSettingsSearch", "OpenSupportReport", "OpenActivityTimeline" })
+            foreach (string method in new[] { "OpenScanSchedule", "OpenFolderReminders", "OpenSettingsSearch", "OpenSupportReport", "OpenActivityTimeline", "OpenInitialSetup", "OpenRecoveryCenter", "OpenAccessibilityHelp", "OpenReleaseReadiness" })
             {
                 Exception failure = null; bool visited = false;
                 using (var timer = new Timer { Interval = 250 })
@@ -53,6 +53,24 @@ internal static class InsightsUiChecks
                 }
                 if (failure != null) throw failure;
                 check(visited, method + " did not open");
+            }
+            using (var release = new System.Threading.ManualResetEventSlim())
+            {
+                var operation = new ScanOperation("Quick", null, () => { release.Wait(TimeSpan.FromSeconds(10)); return Core.Json(new { interpretation = "Fixture completed" }); });
+                var task = operation.RunAsync();
+                using (var progress = new ScanRunDialog(operation, Palette.From(new FishTank.Appearance())))
+                {
+                    progress.StartPosition = FormStartPosition.Manual; progress.Location = new Point(-30000, -30000); progress.ShowInTaskbar = false;
+                    progress.Show(owner); Application.DoEvents();
+                    check(All(progress).OfType<Label>().Any(x => x.AccessibleName == "Scan stage" && x.Text.Length > 0), "Scan stage lacks an accessible label");
+                    check(All(progress).OfType<Button>().Any(x => x.Text.Contains("cancellation")), "Scan cancellation control missing");
+                    using (var bitmap = new Bitmap(progress.Width, progress.Height)) { progress.DrawToBitmap(bitmap, new Rectangle(Point.Empty, progress.Size)); bitmap.Save(Path.Combine(output, "ScanRunDialog.png")); }
+                    progress.Close();
+                    check(!progress.IsDisposed && !progress.Visible && operation.IsRunning, "Closing progress incorrectly stops a running scan");
+                    release.Set();
+                    var until = DateTime.UtcNow.AddSeconds(5); while (!task.IsCompleted && DateTime.UtcNow < until) { Application.DoEvents(); System.Threading.Thread.Sleep(10); }
+                    check(task.IsCompleted && !operation.IsRunning, "Completed scan did not clear running state");
+                }
             }
             owner.Hide();
         }

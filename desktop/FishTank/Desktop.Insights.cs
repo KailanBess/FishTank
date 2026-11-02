@@ -59,7 +59,7 @@ public sealed partial class Desktop
         var actions = top.Select((issue, i) => (Control)Button("Review item " + (i + 1), issue.Item2, false)).ToList();
         actions.Add(Button("Refresh protection status", RefreshProtectionOverview, true));
         ActionRow(actions.ToArray());
-        ActionRow(Button("Activity timeline", OpenActivityTimeline, false), Button("Preview support report", OpenSupportReport, false));
+        ActionRow(Button("Activity timeline", OpenActivityTimeline, false), Button("Recovery center", OpenRecoveryCenter, false), Button("Preview support report", OpenSupportReport, false));
     }
 
     private void InsightNote(string title, string detail)
@@ -90,11 +90,12 @@ public sealed partial class Desktop
                 + "\n" + schedule.LastResult + "\nRuns while FishTank is open; a missed occurrence runs once when available. Defender’s existing remediation policy applies.");
         }
         catch { Note("Scan schedule · couldn’t check", "Saved scheduling data could not be read. It has not been replaced."); }
-        ActionRow(Button("Configure scan schedule", OpenScanSchedule, false), Button("Activity timeline", OpenActivityTimeline, false));
+        ActionRow(Button("Configure scan schedule", OpenScanSchedule, false), Button("View scan progress", OpenCurrentScan, false), Button("Activity timeline", OpenActivityTimeline, false));
     }
 
     private void AddAppSettings()
     {
+        ActionRow(Button("First-run setup", OpenInitialSetup, false), Button("Recovery center", OpenRecoveryCenter, false), Button("Accessibility help", OpenAccessibilityHelp, false), Button("Signed release readiness", OpenReleaseReadiness, false));
         ActionRow(Button("Search settings", OpenSettingsSearch, true), Button("Scan scheduling", OpenScanSchedule, false),
             Button("Folder backup reminders", OpenFolderReminders, false), Button("Preview support report", OpenSupportReport, false));
     }
@@ -231,6 +232,10 @@ public sealed partial class Desktop
                 Tuple.Create("Local browser dashboard · pairing session browser access", (Action)(() => Navigate("Settings"))),
                 Tuple.Create("Live monitoring · Defender detections background alerts tray", (Action)(() => Navigate("Real-time monitoring"))),
                 Tuple.Create("Activity timeline · scans quarantine backups updates history", (Action)OpenActivityTimeline),
+                Tuple.Create("First-run setup · onboarding password protection reminders", (Action)OpenInitialSetup),
+                Tuple.Create("Recovery center · quarantine restore backup passphrase", (Action)OpenRecoveryCenter),
+                Tuple.Create("Accessibility keyboard shortcuts · high contrast screen reader focus", (Action)OpenAccessibilityHelp),
+                Tuple.Create("Signed release readiness · certificate publisher signing install", (Action)OpenReleaseReadiness),
                 Tuple.Create("Support report · export preview redact diagnostics", (Action)OpenSupportReport)
             };
             var matches = destinations.ToList();
