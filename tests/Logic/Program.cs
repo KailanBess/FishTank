@@ -138,5 +138,16 @@ try {
     Check(GitHubReleasePolicy.Redirect(origin, "https://release-assets.githubusercontent.com/asset?signature=fixture").Scheme == "https", "GitHub signed asset redirect refused");
     foreach (var redirect in new[] { "http://release-assets.githubusercontent.com/asset", "https://evil.example/asset", "https://user:password@release-assets.githubusercontent.com/asset", "https://github.com/other/repo/releases/download/v1.2.3/FishTank.exe", "https://release-assets.githubusercontent.com:8443/asset" })
         Reject(() => GitHubReleasePolicy.Redirect(origin, redirect), "Unsafe GitHub redirect accepted");
+    var backupNow = new DateTime(2026, 11, 2, 12, 0, 0, DateTimeKind.Utc);
+    Check(BackupAgePolicy.Assess("Vault", DateTime.MinValue, DateTime.MinValue, backupNow, 7).State == "Unknown", "Missing backup date reported fresh");
+    Check(BackupAgePolicy.Assess("Vault", DateTime.MinValue, backupNow, backupNow, 7).State == "Unknown", "Verification invented backup creation age");
+    Check(BackupAgePolicy.Assess("Vault", backupNow.AddDays(-8), backupNow, backupNow, 7).State == "Review", "Verifying old backup reset its age");
+    Check(BackupAgePolicy.Assess("Vault", backupNow.AddDays(-7), backupNow, backupNow, 7).State == "Review", "Backup age threshold boundary missed");
+    Check(BackupAgePolicy.Assess("Vault", backupNow.AddDays(-7).AddSeconds(1), DateTime.MinValue, backupNow, 7).State == "No issue observed", "Backup marked overdue before threshold");
+    Check(BackupAgePolicy.Assess("Vault", backupNow.AddDays(1), backupNow, backupNow, 7).State == "Unknown", "Future creation date accepted");
+    Check(BackupAgePolicy.Assess("Vault", backupNow.AddDays(-1), backupNow.AddDays(1), backupNow, 7).State == "Unknown", "Future verification date accepted");
+    Check(BackupAgePolicy.Assess("Vault", DateTime.MinValue.AddHours(6), DateTime.MinValue.AddHours(6), backupNow, 7).State == "Unknown", "Timezone-adjusted empty date treated as a real backup");
+    Reject(() => BackupAgePolicy.Assess("Vault", backupNow, backupNow, backupNow, 0), "Zero backup age allowed");
+    Reject(() => BackupAgePolicy.Assess("Vault", backupNow, backupNow, backupNow, 366), "Oversized backup age allowed");
     Console.WriteLine($"{count} checks passed.");
 } finally { File.Delete(path); }

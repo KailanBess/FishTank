@@ -3,6 +3,13 @@ $global:FishTankFixtureRealtime=$true
 $global:FishTankFixtureSignatureAge=0
 $global:FishTankFixtureBoot=$true
 $global:FishTankFixtureTasksUnavailable=$false
+$global:FishTankFixtureDiskHealth='Healthy'
+$global:FishTankFixtureDiskOps=@('OK')
+$global:FishTankFixtureWear=10
+$global:FishTankFixtureTemperature=35
+$global:FishTankFixtureCountersUnavailable=$false
+$global:FishTankFixtureFree=50GB
+$global:FishTankFixtureVolumeSize=100GB
 $script:checks=0
 function Assert($Condition,[string]$Name){if(!$Condition){throw $Name};$script:checks++}
 function Get-MpComputerStatus{[pscustomobject]@{RealTimeProtectionEnabled=$global:FishTankFixtureRealtime;AMRunningMode='Normal';AntivirusSignatureAge=$global:FishTankFixtureSignatureAge;AntivirusSignatureVersion='fixture'}}
@@ -21,6 +28,9 @@ function Get-ScheduledTask{
  if($global:FishTankFixtureTasksUnavailable){throw 'Fixture task access denied'}
  [pscustomobject]@{TaskPath='\Fixture\';TaskName='FixtureTask';Settings=[pscustomobject]@{Enabled=$true};Actions=@([pscustomobject]@{Execute='fixture.exe';Arguments='--token SECRET_FIXTURE_DO_NOT_RETAIN'});Triggers=@([pscustomobject]@{Enabled=$true;StartBoundary='2026-01-01T00:00:00'});Principal=[pscustomobject]@{UserId='Fixture user';RunLevel=0}}
 }
+function Get-PhysicalDisk{[pscustomobject]@{DeviceId='0';FriendlyName='Fixture SSD';HealthStatus=$global:FishTankFixtureDiskHealth;OperationalStatus=$global:FishTankFixtureDiskOps;MediaType='SSD'}}
+function Get-StorageReliabilityCounter{param([Parameter(ValueFromPipeline=$true)]$InputObject);process{if($global:FishTankFixtureCountersUnavailable){throw 'Fixture telemetry unavailable'};[pscustomobject]@{Temperature=$global:FishTankFixtureTemperature;Wear=$global:FishTankFixtureWear;ReadErrorsUncorrected=0;WriteErrorsUncorrected=0}}}
+function Get-Volume{[pscustomobject]@{DriveLetter='Z';DriveType='Fixed';Size=$global:FishTankFixtureVolumeSize;SizeRemaining=$global:FishTankFixtureFree}}
 $collector=Join-Path $PSScriptRoot '..\desktop\FishTank.Collect.ps1'
 $health=& $collector -Mode SecurityHealth | ConvertFrom-Json
 Assert ($health.Count -eq 7) 'Health checks did not all execute'
@@ -44,4 +54,24 @@ Assert ($startup.Count -eq 4) 'Startup fixture coverage incomplete'
 $global:FishTankFixtureTasksUnavailable=$true
 $startup=& $collector -Mode StartupInventory | ConvertFrom-Json
 Assert (($startup | Where-Object Name -eq 'Task inventory unavailable').State -eq 'Unknown') 'Task access failure not unknown'
+$disk=& $collector -Mode DiskHealth | ConvertFrom-Json
+Assert (($disk | Where-Object Name -eq 'Disk 0 Fixture SSD reported health').State -eq 'No issue observed') 'Reported healthy disk not recognized'
+Assert (($disk | Where-Object Name -eq 'Disk 0 Fixture SSD temperature').State -eq 'No issue observed') 'Normal temperature misclassified'
+Assert (($disk | Where-Object Name -eq 'Volume Z: free space').State -eq 'No issue observed') 'Adequate space misclassified'
+$global:FishTankFixtureDiskHealth='Unhealthy';$global:FishTankFixtureWear=95;$global:FishTankFixtureTemperature=75;$global:FishTankFixtureFree=1GB
+$disk=& $collector -Mode DiskHealth | ConvertFrom-Json
+Assert (($disk | Where-Object Name -eq 'Disk 0 Fixture SSD reported health').State -eq 'Review') 'Unhealthy disk not flagged'
+Assert (($disk | Where-Object Name -eq 'Disk 0 Fixture SSD reported wear used').State -eq 'Review') 'High wear not flagged'
+Assert (($disk | Where-Object Name -eq 'Disk 0 Fixture SSD temperature').State -eq 'Review') 'High temperature not flagged'
+Assert (($disk | Where-Object Name -eq 'Volume Z: free space').State -eq 'Review') 'Low space not flagged'
+$global:FishTankFixtureCountersUnavailable=$true;$global:FishTankFixtureDiskHealth=$null;$global:FishTankFixtureFree=$null
+$disk=& $collector -Mode DiskHealth | ConvertFrom-Json
+Assert (($disk | Where-Object Name -eq 'Disk 0 Fixture SSD reliability counters').State -eq 'Unknown') 'Unavailable reliability data reported healthy'
+Assert (($disk | Where-Object Name -eq 'Disk 0 Fixture SSD reported health').State -eq 'Unknown') 'Missing disk health reported healthy'
+Assert (($disk | Where-Object Name -eq 'Volume Z: free space').State -eq 'Unknown') 'Missing volume size reported adequate'
+$global:FishTankFixtureCountersUnavailable=$false;$global:FishTankFixtureTemperature=0;$global:FishTankFixtureWear=101;$global:FishTankFixtureFree=2GB;$global:FishTankFixtureVolumeSize=20GB
+$disk=& $collector -Mode DiskHealth | ConvertFrom-Json
+Assert (($disk | Where-Object Name -eq 'Disk 0 Fixture SSD temperature').State -eq 'Unknown') 'Missing/sentinel temperature reported healthy'
+Assert (($disk | Where-Object Name -eq 'Disk 0 Fixture SSD reported wear used').State -eq 'Unknown') 'Invalid wear reported healthy'
+Assert (($disk | Where-Object Name -eq 'Volume Z: free space').State -eq 'No issue observed') 'Free space boundary misclassified'
 Write-Host "$script:checks collector fixture checks passed; no Windows security configuration changed."

@@ -7,7 +7,7 @@ namespace FishTank;
 public static class SecurityReviews
 {
     private static readonly object Gate = new object();
-    public static readonly string[] Categories = { "SecurityHealth", "StartupInventory", "Accounts", "Permissions", "Exposure" };
+    public static readonly string[] Categories = { "SecurityHealth", "StartupInventory", "Accounts", "Permissions", "Exposure", "DiskHealth" };
     private static List<EvidenceSnapshot> Read() => ProtectedStore.Read("security-history", () => new List<EvidenceSnapshot>()) ?? throw new InvalidOperationException("Invalid security history.");
 
     public static EvidenceSnapshot Capture(string category)
@@ -32,8 +32,8 @@ public static class SecurityReviews
             history = history.GroupBy(x => x.Category).SelectMany(x => x.Skip(Math.Max(0, x.Count() - 6))).ToList();
             ProtectedStore.Write("security-history", history);
             if (acceptBaseline) ProtectedStore.Write("baseline-" + category, snapshot);
-            SecurityPreferences.Update(p => p.LastReviewUtc = DateTime.UtcNow);
-            return Core.Json(new { capturedUtc = snapshot.CapturedUtc, note = previous == null ? "First review recorded; not a trusted baseline unless explicitly accepted." : "Compared with the previous recorded review. Unknown checks remain unknown.", findings = output });
+            if (category != "DiskHealth") SecurityPreferences.Update(p => p.LastReviewUtc = DateTime.UtcNow);
+            return Core.Json(new { capturedUtc = snapshot.CapturedUtc, note = category == "DiskHealth" ? "Current disk observations; previous checks are retained in history. A reported healthy status is not a guarantee against failure." : previous == null ? "First review recorded; not a trusted baseline unless explicitly accepted." : "Compared with the previous recorded review. Unknown checks remain unknown.", findings = category == "DiskHealth" ? snapshot.Items : output });
         }
     }
     public static string CompareStartup()
@@ -44,4 +44,5 @@ public static class SecurityReviews
         return Core.Json(EvidenceComparison.Compare(before, after));
     }
     public static string History() { lock (Gate) return Core.Json(Read()); }
+    internal static EvidenceSnapshot Latest(string category) { lock (Gate) return Read().LastOrDefault(x => x.Category == category); }
 }

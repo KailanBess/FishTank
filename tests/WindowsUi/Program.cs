@@ -21,6 +21,7 @@ internal static class Program
         Directory.CreateDirectory(temp);
         Directory.CreateDirectory(output);
         Core.Data = temp;
+        SecurityPreferences.Save(new SecurityPreferences { DiskHealthWarnings = false }); // UI fixtures never launch automatic hardware jobs.
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
         SimpleExplanations.Install();

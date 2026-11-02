@@ -447,6 +447,8 @@ public sealed class PasswordManagerDialog : Form
 		{
 			session.ExportEncrypted(saveFileDialog2.FileName);
 			state.Text = "Encrypted backup saved. Keep its master passphrase separately; losing it prevents recovery.";
+			try { BackupHistory.Created(BackupHistory.PasswordVault, saveFileDialog2.FileName, session.ContentSha256); }
+			catch { state.Text += " Backup-age tracking could not be saved; verify and record this backup later."; }
 		}
 	}
 

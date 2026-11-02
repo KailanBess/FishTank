@@ -17,7 +17,8 @@ try{
   'desktop/bin/Release/cli/net48/FishTank.Cli.exe.config',
   'docs/UI-REVIEW.md',
   'docs/SECURITY-AND-INTEGRITY.md',
-  'docs/PROTECTED-FILES-AND-GITHUB-UPDATES.md'
+  'docs/PROTECTED-FILES-AND-GITHUB-UPDATES.md',
+  'docs/DISK-HEALTH-AND-BACKUP-AGE.md'
  )
  foreach($file in $files){Copy-Item -LiteralPath (Join-Path $root $file) -Destination $temporary}
  $version=[Reflection.AssemblyName]::GetAssemblyName((Join-Path $temporary 'FishTank.exe')).Version
@@ -31,6 +32,7 @@ Portable mode uses a data folder beside the executable. Normal mode uses your ex
 Protected Files adds independent passphrase-encrypted containers for selected files and folders. Read PROTECTED-FILES-AND-GITHUB-UPDATES.md before moving originals or exporting plaintext.
 
 Security Center > Security and integrity tools contains protection reviews, startup and folder integrity, permission/network reviews, backup verification and isolated restore drills, locking/reminder preferences, publisher checks and verified-update staging.
+Disk health and free space adds read-only device/capacity warnings; Backup and recovery shows recorded copy age separately from verification age. Read DISK-HEALTH-AND-BACKUP-AGE.md for thresholds, defaults and unknown-data limits.
 Simple view is the default. Advanced view adds evidence and controls without changing protection.
 
 This is not an audited or production-approved security release. Windows runtime and visual validation remain pending in the Linux build workspace; see SECURITY-AND-INTEGRITY.md for the exact checks and limits.

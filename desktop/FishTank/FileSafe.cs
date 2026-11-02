@@ -146,7 +146,9 @@ public static class FileSafe
                     aes.Key = encryptionKey; aes.IV = iv; aes.Mode = CipherMode.CBC; aes.Padding = PaddingMode.PKCS7;
                     using (var decrypt = aes.CreateDecryptor()) plain = decrypt.TransformFinalBlock(ciphertext, 0, ciphertext.Length);
                 }
-                var session = new FileSafeSession(plain); plain = null; return session;
+                file.Position = 0;
+                string fingerprint; using (var sha = SHA256.Create()) fingerprint = BitConverter.ToString(sha.ComputeHash(file)).Replace("-", "");
+                var session = new FileSafeSession(plain) { ContainerSha256 = fingerprint }; plain = null; return session;
             }
             finally
             {
@@ -159,6 +161,7 @@ public static class FileSafe
 
 public sealed class FileSafeSession : IDisposable
 {
+    internal string ContainerSha256 { get; set; }
     private readonly object gate = new object();
     private byte[] plaintext;
     private readonly List<FileSafeItem> items = new List<FileSafeItem>();

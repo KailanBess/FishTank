@@ -35,9 +35,17 @@ internal static class Program
             {
                 vault.Put(new PasswordEntry { Title = "Fixture", Password = "Test-only entry value!" });
                 vault.ExportEncrypted(backup);
+                BackupHistory.Created(BackupHistory.PasswordVault, backup, vault.ContentSha256);
                 Reject<IOException>(() => vault.ExportEncrypted(backup), "Backup overwrite accepted");
             }
             string activeHash = DownloadChecksum.Compute(active);
+            Check(BackupHistory.Status().Single(x => x.Name == "Password vault backup age").State == "No issue observed", "Newly created backup date was not recorded");
+            var oldRecords = ProtectedStore.Read("backup-history", () => new System.Collections.Generic.List<BackupObservation>());
+            oldRecords.Single().CreatedUtc = DateTime.UtcNow.AddDays(-8);
+            ProtectedStore.Write("backup-history", oldRecords);
+            using (var checkedBackup = PasswordSession.Open(backup, pass)) BackupHistory.Verified(BackupHistory.PasswordVault, backup, checkedBackup.ContentSha256, false);
+            Check(BackupHistory.Status().Single(x => x.Name == "Password vault backup age").State == "Review", "Reverification made an old backup look newly created");
+            Check(SecurityPreferences.RecordedUtc(DateTime.MinValue.AddHours(6)) == DateTime.MinValue, "Unset date did not survive timezone normalization");
             using (var verified = PasswordSession.Open(backup, pass)) Check(verified.Entries.Count == 1, "Backup contents invalid");
             Reject<CryptographicException>(() => PasswordSession.Open(backup, "incorrect passphrase"), "Wrong backup passphrase accepted");
             string isolated = Path.Combine(temp, "isolated.ftvault");
@@ -80,6 +88,8 @@ internal static class Program
             var health = SecurityReviews.Capture("SecurityHealth");
             Check(health.Items.Count >= 7 && health.Items.Any(x => x.Name == "Secure Boot"), "Windows health collector did not execute");
             Check(health.Items.All(x => new[] { "Unknown", "Review", "No issue observed" }.Contains(x.State)), "Unsupported health status");
+            var disks = SecurityReviews.Capture("DiskHealth");
+            Check(disks.Items.Count > 0 && disks.Items.All(x => new[] { "Unknown", "Review", "No issue observed" }.Contains(x.State)), "Disk collector did not return bounded health/unknown evidence");
             string summary = SecurityToolsDialog.Summarize(Core.Json(new[] { new EvidenceItem { Name = "Fixture", State = "Unknown", Value = "Fixture unavailable" } }));
             Check(summary.Contains("unknown") && summary.Contains("full evidence"), "Simple summary hid unknown status or evidence access");
             string personal = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "FishTank-safe-fixture-" + Guid.NewGuid().ToString("N"));

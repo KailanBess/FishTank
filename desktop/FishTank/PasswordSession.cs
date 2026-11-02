@@ -28,6 +28,7 @@ public sealed class PasswordSession : IDisposable
 	public DateTime LastActivityUtc { get; private set; }
 
 	public bool IsUnlocked => keys != null;
+	internal string ContentSha256 => IsUnlocked && expected != null ? BitConverter.ToString(expected).Replace("-", "") : throw new InvalidOperationException("Password vault is locked.");
 
 	public static string DefaultPath => Path.Combine(Core.Data, "passwords.ftvault");
 

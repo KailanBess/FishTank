@@ -1,4 +1,4 @@
-param([ValidateSet('Health','Network','Persistence','Events','Tailscale','Hardening','Accounts','Browsers','ScanPolicy','SecurityHealth','StartupInventory','Permissions','Exposure')][string]$Mode='Health')
+param([ValidateSet('Health','Network','Persistence','Events','Tailscale','Hardening','Accounts','Browsers','ScanPolicy','SecurityHealth','StartupInventory','Permissions','Exposure','DiskHealth')][string]$Mode='Health')
 $ErrorActionPreference='Stop'
 $ProgressPreference='SilentlyContinue'
 function Read-Check($Name,[scriptblock]$Read) {
@@ -22,6 +22,54 @@ function Get-TextHash([string]$Text) {
  finally {$sha.Dispose()}
 }
 $result = switch($Mode) {
+
+
+ 'DiskHealth' {
+  try {
+   $disks=@(Get-PhysicalDisk | Sort-Object DeviceId,FriendlyName)
+   if($disks.Count -eq 0){throw 'No physical-disk telemetry was returned. Controllers and virtual machines may hide it.'}
+   if($disks.Count -gt 64){[pscustomobject]@{Name='Physical disk coverage';State='Unknown';Value='PARTIAL: first 64 physical disks only.'}}
+   foreach($disk in ($disks | Select-Object -First 64)){
+    $name="Disk $($disk.DeviceId) $($disk.FriendlyName)"
+    $health=[string]$disk.HealthStatus
+    $ops=@($disk.OperationalStatus | ForEach-Object {[string]$_})
+    $bad=@($ops | Where-Object {$_ -in @('Degraded','Stressed','Predictive Failure','Error','Non-Recoverable Error','Lost Communication','No Contact','Failed','Inaccessible','Read-only')})
+    $unknown=@($ops | Where-Object {$_ -notin @('OK','Online','In Service','InService')})
+    $state=if($health -in @('Warning','Unhealthy') -or $bad.Count -gt 0){'Review'}elseif($health -eq 'Healthy' -and $ops.Count -gt 0 -and $unknown.Count -eq 0){'No issue observed'}else{'Unknown'}
+    [pscustomobject]@{Name="$name reported health";State=$state;Value="HealthStatus: $health; OperationalStatus: $($ops -join ', '); MediaType: $($disk.MediaType)`nReported health: $health; status: $($ops -join ', '). A healthy report cannot predict every failure. Back up important data and consult the device vendor if a warning is reported."}
+    try {
+     $readings=@($disk | Get-StorageReliabilityCounter)
+     if($readings.Count -ne 1){throw 'No unambiguous storage reliability counter set was returned.'}
+     $counter=$readings[0]
+     foreach($metric in @(@{Property='Temperature';Label='temperature';Threshold=70;Unit='C'},@{Property='Wear';Label='reported wear used';Threshold=90;Unit='%'},@{Property='ReadErrorsUncorrected';Label='uncorrected read errors';Threshold=1;Unit=''},@{Property='WriteErrorsUncorrected';Label='uncorrected write errors';Threshold=1;Unit=''})){
+      $value=$counter.($metric.Property);$state='Unknown'
+      if($null -ne $value -and $value -is [ValueType]){
+       $numeric=[double]$value
+       $valid=$numeric -ge 0 -and ![double]::IsNaN($numeric) -and ![double]::IsInfinity($numeric)
+       if($metric.Property -eq 'Temperature'){$valid=$valid -and $numeric -gt 0 -and $numeric -le 150}
+       if($metric.Property -eq 'Wear'){$valid=$valid -and $numeric -le 100}
+       if($valid){$state=if($numeric -ge $metric.Threshold){'Review'}else{'No issue observed'}}
+      }
+      [pscustomobject]@{Name="$name $($metric.Label)";State=$state;Value="Reported value: $value $($metric.Unit); review threshold: $($metric.Threshold). Missing/invalid counters remain unknown.`nReported $($metric.Label): $value $($metric.Unit); review at $($metric.Threshold). Thresholds are general prompts, not vendor failure predictions. Error counts can be historical; preserve backups and consult vendor diagnostics."}
+     }
+    } catch {[pscustomobject]@{Name="$name reliability counters";State='Unknown';Value="Reliability telemetry unavailable: $($_.Exception.Message)`nPermissions, drivers, USB/RAID adapters and virtual disks can hide these counters. No healthy status is inferred from missing data."}}
+   }
+  } catch {[pscustomobject]@{Name='Physical disk telemetry';State='Unknown';Value=$_.Exception.Message}}
+  try {
+   $volumes=@(Get-Volume | Where-Object {$_.DriveLetter -and [string]$_.DriveType -eq 'Fixed'} | Sort-Object DriveLetter)
+   if($volumes.Count -eq 0){throw 'No mounted fixed-volume free-space data was returned.'}
+   if($volumes.Count -gt 64){[pscustomobject]@{Name='Volume coverage';State='Unknown';Value='PARTIAL: first 64 mounted fixed volumes only.'}}
+   foreach($volume in ($volumes | Select-Object -First 64)){
+    $state='Unknown';$evidence='Free-space measurements are unavailable or invalid.'
+    if($null -ne $volume.Size -and $null -ne $volume.SizeRemaining -and $volume.Size -gt 0 -and $volume.SizeRemaining -ge 0 -and $volume.SizeRemaining -le $volume.Size){
+     $percent=100.0*[double]$volume.SizeRemaining/[double]$volume.Size
+     $state=if($percent -lt 10 -or $volume.SizeRemaining -lt 2GB){'Review'}else{'No issue observed'}
+     $evidence='Free: {0:N1} GiB of {1:N1} GiB ({2:N1}%). Review below 10% or 2 GiB.' -f ($volume.SizeRemaining/1GB),($volume.Size/1GB),$percent
+    }
+    [pscustomobject]@{Name="Volume $($volume.DriveLetter): free space";State=$state;Value="$evidence`n$evidence Review storage usage carefully before deleting files; low free space is not itself evidence of physical disk failure."}
+   }
+  } catch {[pscustomobject]@{Name='Volume free-space telemetry';State='Unknown';Value=$_.Exception.Message}}
+ }
 
  'SecurityHealth' {
   Read-SafetyCheck 'Defender real-time protection' {$p=Get-MpComputerStatus;if($null -eq $p.RealTimeProtectionEnabled){throw 'Protection status unavailable'};@{Problem=(!$p.RealTimeProtectionEnabled);Evidence="Real-time protection: $($p.RealTimeProtectionEnabled); mode: $($p.AMRunningMode)";Recommendation='Review Windows Security; another antivirus or organizational policy may control this device.'}}

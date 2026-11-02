@@ -14,6 +14,7 @@ public sealed class SecurityToolsDialog : Form
 {
     private readonly Palette colors;
     private readonly Label state;
+    private readonly Label backupStatus;
     private readonly TextBox output;
     private readonly CheckBox details;
     private readonly List<Button> buttons = new List<Button>();
@@ -41,6 +42,7 @@ public sealed class SecurityToolsDialog : Form
         layout.Controls.Add(tabs, 0, 0);
         var reviews = Page(tabs, "Security reviews", "Check Windows protection, startup changes, accounts, permissions and listening ports. Unknown or partial results never mean safe. Reviews save up to six encrypted snapshots per category on this Windows profile.");
         Add(reviews, "Protection health", () => Run(() => SecurityReviews.Run("SecurityHealth", false)));
+        Add(reviews, "Disk health and free space", () => Run(DiskHealthChecks.Run));
         Add(reviews, "Startup review", () => Run(() => SecurityReviews.Run("StartupInventory", false)));
         Add(reviews, "Account protection", () => Run(() => SecurityReviews.Run("Accounts", false)));
         Add(reviews, "Camera, microphone and location", () => Run(() => SecurityReviews.Run("Permissions", false)));
@@ -103,8 +105,15 @@ public sealed class SecurityToolsDialog : Form
         var reminders = new CheckBox { Text = "Show in-app security and backup reminders", AutoSize = true, Checked = preferences?.Reminders ?? false }; settings.Controls.Add(reminders);
         var desktopNotifications = new CheckBox { Text = "Also show Windows desktop notifications (no file names or secrets)", AutoSize = true, Checked = preferences?.DesktopNotifications ?? false }; settings.Controls.Add(desktopNotifications);
         var checkGitHub = new CheckBox { Text = "Check public GitHub releases once after startup (contacts GitHub)", AutoSize = true, Checked = preferences?.CheckGitHubOnStartup ?? false }; settings.Controls.Add(checkGitHub);
-        Explain(settings, "Remind after this many days:");
+        Explain(settings, "Security-review age and reminder repeat interval (days). Backup copy age is configured separately:");
         var days = new NumericUpDown { Minimum = 1, Maximum = 90, Value = preferences?.ReminderDays ?? 7, Width = 100, AccessibleName = "Security reminder interval in days" }; settings.Controls.Add(days);
+        var backupWarnings = new CheckBox { Text = "Include backup-age warnings in enabled reminders", AutoSize = true, Checked = preferences?.BackupAgeWarnings ?? true }; settings.Controls.Add(backupWarnings);
+        Explain(settings, "Warn when a recorded app-created backup copy reaches this age (days). Verifying an old copy does not make it fresh:");
+        var backupDays = new NumericUpDown { Minimum = 1, Maximum = 365, Value = preferences?.BackupAgeDays ?? 7, Width = 100, AccessibleName = "Maximum recorded backup copy age in days" }; settings.Controls.Add(backupDays);
+        var diskWarnings = new CheckBox { Text = "Check disk health automatically while FishTank is open (read only)", AutoSize = true, Checked = preferences?.DiskHealthWarnings ?? true }; settings.Controls.Add(diskWarnings);
+        Explain(settings, "Disk-check interval. Hardware may hide telemetry; unsupported checks stay unknown:");
+        var diskInterval = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 240, AccessibleName = "Automatic disk health check interval" };
+        diskInterval.Items.AddRange(new object[] { "Hourly", "Daily", "Weekly" }); diskInterval.SelectedIndex = Array.IndexOf(new[] { 1, 24, 168 }, preferences?.DiskCheckHours ?? 24); settings.Controls.Add(diskInterval);
         Explain(settings, "Folder comparison schedule (while app is open):");
         var schedule = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 240, AccessibleName = "Folder integrity comparison schedule" };
         schedule.Items.AddRange(new object[] { "Off", "Hourly", "Daily", "Weekly" });
@@ -118,8 +127,9 @@ public sealed class SecurityToolsDialog : Form
             string publisher = pin.Text.Trim(); if (publisher != "") publisher = DownloadChecksum.Normalize(publisher);
             string feedUrl = feed.Text.Trim(); if (feedUrl != "") VerifiedUpdateFeed.RequireHttps(feedUrl);
             Action save = () => {
-                SecurityPreferences.Update(p => { p.IdleMinutes = (int)idle.Value; p.LockWithWindows = windowsLock.Checked; p.Reminders = reminders.Checked; p.DesktopNotifications = desktopNotifications.Checked; p.CheckGitHubOnStartup = checkGitHub.Checked; p.ReminderDays = (int)days.Value; p.FolderCheckHours = new[] { 0, 1, 24, 168 }[schedule.SelectedIndex]; p.PublisherCertificateSha256 = publisher; p.UpdateFeedUrl = feedUrl; });
+                SecurityPreferences.Update(p => { p.IdleMinutes = (int)idle.Value; p.LockWithWindows = windowsLock.Checked; p.Reminders = reminders.Checked; p.DesktopNotifications = desktopNotifications.Checked; p.CheckGitHubOnStartup = checkGitHub.Checked; p.ReminderDays = (int)days.Value; p.FolderCheckHours = new[] { 0, 1, 24, 168 }[schedule.SelectedIndex]; p.PublisherCertificateSha256 = publisher; p.UpdateFeedUrl = feedUrl; p.BackupAgeDays = (int)backupDays.Value; p.BackupAgeWarnings = backupWarnings.Checked; p.DiskHealthWarnings = diskWarnings.Checked; p.DiskCheckHours = new[] { 1, 24, 168 }[diskInterval.SelectedIndex]; });
                 SetReport("Security preferences saved. App locking works only when an app password is configured. Schedules run only while FishTank is open.");
+                RefreshBackupAge();
             };
             bool changedTrust = publisher != SecurityPreferences.Load().PublisherCertificateSha256 || feedUrl != SecurityPreferences.Load().UpdateFeedUrl;
             if (changedTrust && !AppAccess.Enabled) throw new InvalidOperationException("Set an app password before configuring trusted update publishers.");
@@ -127,6 +137,9 @@ public sealed class SecurityToolsDialog : Form
         });
 
         var backups = Page(tabs, "Backup and recovery", "Test an encrypted FishTank password-vault backup using its master passphrase. Verification decrypts it in memory. The restore drill uses a temporary isolated folder and does not replace your active vault. This does not back up Windows or certify disk recovery.");
+        backupStatus = Explain(backups, "Loading recorded backup ages…");
+        RefreshBackupAge();
+        Add(backups, "Show backup age and verification dates", () => { RefreshBackupAge(); SetReport(BackupHistory.Summary()); });
         Add(backups, "Verify encrypted backup", () => CheckBackup(false));
         Add(backups, "Test restore in isolation", () => CheckBackup(true));
         Add(backups, "Open Windows backup settings", () => OpenSettings("ms-settings:backup"));
@@ -189,11 +202,17 @@ public sealed class SecurityToolsDialog : Form
     {
         if (working) return;
         working = true; buttons.ForEach(b => b.Enabled = false); state.Text = "Working · no security verdict until checks finish.";
-        try { string result = await Task.Run(action); if (!IsDisposed) SetReport(result); }
+        try { string result = await Task.Run(action); if (!IsDisposed) { SetReport(result); RefreshBackupAge(); } }
         catch (Exception ex) { if (!IsDisposed) SetReport("Check did not complete. Status remains unknown.\n" + ex.Message); }
         finally { working = false; if (!IsDisposed) { buttons.ForEach(b => b.Enabled = true); state.Text = "Finished · review findings and coverage gaps."; } }
     }
     private void SetReport(string value) { if (IsDisposed) return; report = value; RefreshReport(); }
+    private void RefreshBackupAge()
+    {
+        if (IsDisposed || backupStatus == null) return;
+        try { backupStatus.Text = string.Join("\n", BackupHistory.Status().Select(x => x.Name + ": " + x.State)) + "\nUse Show backup age and verification dates for recorded copy dates and limits."; }
+        catch { backupStatus.Text = "Backup age is unknown because tracking data could not be read. Existing files have not been changed."; }
+    }
     private void RefreshReport() { if (output != null) output.Text = details.Checked ? report : Summarize(report); }
     internal static string Summarize(string value)
     {
@@ -253,7 +272,8 @@ public sealed class SecurityToolsDialog : Form
         Run(() => {
             try
             {
-                using (var verified = PasswordSession.Open(backup, secret)) { }
+                string fingerprint;
+                using (var verified = PasswordSession.Open(backup, secret)) { fingerprint = verified.ContentSha256; }
                 if (drill)
                 {
                     string temp = Path.Combine(Core.Data, "restore-test-" + Guid.NewGuid().ToString("N"));
@@ -261,7 +281,8 @@ public sealed class SecurityToolsDialog : Form
                     try { using (var restored = PasswordSession.RestoreEncrypted(backup, Path.Combine(temp, "test.ftvault"), secret)) { } }
                     finally { Directory.Delete(temp, true); }
                 }
-                SecurityPreferences.Update(p => p.LastBackupVerifiedUtc = DateTime.UtcNow);
+                try { BackupHistory.Verified(BackupHistory.PasswordVault, backup, fingerprint, drill); }
+                catch { return "Backup validation succeeded, but recording its verification/age failed. Creation age remains unknown; no fresh backup is inferred."; }
                 return drill ? "Backup authenticated, decrypted, restored to an isolated folder, and reopened successfully. Temporary files were removed; the active vault was not replaced." : "Backup authenticated and decrypted successfully. The active vault was not changed. A real restore drill is still recommended.";
             }
             finally { secret = null; }

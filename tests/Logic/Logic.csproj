@@ -12,5 +12,6 @@
     <Compile Include="../../desktop/FishTank/Totp.cs" Link="Totp.cs" />
     <Compile Include="../../desktop/FishTank/FileSafe.cs" Link="FileSafe.cs" />
     <Compile Include="../../desktop/FishTank/GitHubReleasePolicy.cs" Link="GitHubReleasePolicy.cs" />
+    <Compile Include="../../desktop/FishTank/BackupAgePolicy.cs" Link="BackupAgePolicy.cs" />
   </ItemGroup>
 </Project>

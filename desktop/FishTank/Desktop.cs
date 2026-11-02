@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -344,7 +345,7 @@ public sealed class Desktop : Form
 		}
 		panel4.AutoScrollMinSize = new Size(0, num);
 		UpdateNavigation(panel4);
-		Label label3 = Label("WINDOWS SECURITY COMPANION\nDevelopment preview · 0.8.0", 8f, palette.Muted);
+		Label label3 = Label("WINDOWS SECURITY COMPANION\nDevelopment preview · 0.8.1", 8f, palette.Muted);
 		label3.Dock = DockStyle.Bottom;
 		label3.Height = (int)TextSize(52f);
 		label3.Visible = appearance.ShowFooter;
@@ -1043,6 +1044,19 @@ public sealed class Desktop : Form
 	{
 		Header("Your security, at a glance", "A calm place to check this PC and decide what needs attention.");
 		AddViewControls();
+		try
+		{
+			var storage = new List<string>();
+			string disk = DiskHealthChecks.CachedWarning();
+			if (disk != null) storage.Add(disk);
+			storage.AddRange(BackupHistory.Alerts().Select(x => x.Name + ": " + x.State + ". Open Backup and recovery for recorded dates; verification does not refresh creation age."));
+			if (storage.Count > 0)
+			{
+				Note("Saved disk and backup status", string.Join("\n\n", storage));
+				ActionRow(Button("Review disk health and backup ages", OpenSecurityTools, false));
+			}
+		}
+		catch { Note("Disk and backup status unknown", "Saved storage or backup evidence could not be read. Open Security Center to run a read-only check; no healthy or fresh status was inferred."); }
 		if (observing)
 		{
 			Note("Folder observer is running", "Your optional folder observer is still running in the background. Switching views does not stop it. It reports activity and does not block threats.");

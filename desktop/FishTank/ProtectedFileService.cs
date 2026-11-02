@@ -94,6 +94,7 @@ internal static class ProtectedFileService
         string recovery = destination + ".recovery.ftsafe";
         if (File.Exists(destination) || File.Exists(recovery)) throw new IOException("Choose a new container name; existing files and backups are never overwritten.");
         var sources = new List<ProtectedSource>(); var failures = new List<string>(); int removed = 0;
+        string fingerprint = null;
         try
         {
             var input = new List<FileSafeSource>();
@@ -107,15 +108,18 @@ internal static class ProtectedFileService
             using (var verified = Open(destination, password)) { if (verified.Files.Count != input.Count) throw new IOException("Container verification failed; originals were not removed."); }
             File.Copy(destination, recovery, false);
             using (var durable = new FileStream(recovery, FileMode.Open, FileAccess.ReadWrite, FileShare.Read)) durable.Flush(true);
-            using (var verified = Open(recovery, password)) { if (verified.Files.Count != input.Count) throw new IOException("Recovery copy verification failed; originals were not removed."); }
+            using (var verified = Open(recovery, password)) { if (verified.Files.Count != input.Count) throw new IOException("Recovery copy verification failed; originals were not removed."); fingerprint = verified.ContainerSha256; }
             if (move)
                 foreach (var source in sources)
                     try { source.RemoveOriginal(); removed++; } catch (IOException) { failures.Add(source.Path); }
         }
         finally { foreach (var source in sources) source.Dispose(); }
+        string tracking = "";
+        try { BackupHistory.Created(BackupHistory.ProtectedFiles, recovery, fingerprint, true); }
+        catch { tracking = "Backup-age tracking could not be saved; the verified encrypted copies remain available. "; }
         return "Encrypted container and recovery copy verified. " + (move ? removed + " selected originals were moved. " : "Originals were NOT removed and are still readable outside FishTank. ")
             + (failures.Count > 0 ? failures.Count + " originals remain readable because removal failed:\n" + string.Join("\n", failures) + "\n" : "")
-            + "Keep the recovery copy on separate protected storage. Deletion is not secure erasure; older copies, backups and disk remnants may still exist. There is no passphrase reset.";
+            + tracking + "Keep the recovery copy on separate protected storage. Deletion is not secure erasure; older copies, backups and disk remnants may still exist. There is no passphrase reset.";
     }
     internal static FileSafeSession Open(string path, string password)
     {

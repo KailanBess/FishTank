@@ -25,6 +25,15 @@ internal sealed class SecurityScheduler : IDisposable
         {
             var prefs = SecurityPreferences.Load();
             var now = DateTime.UtcNow;
+            if (prefs.Reminders && prefs.BackupAgeWarnings && now - prefs.LastBackupAgeNoticeUtc >= TimeSpan.FromDays(prefs.ReminderDays))
+            {
+                var alerts = BackupHistory.Alerts();
+                if (alerts.Count > 0)
+                {
+                    notify("Backup age needs attention: " + string.Join(", ", alerts.ConvertAll(x => x.Name + " (" + x.State + ")")) + ". Open Backup and recovery. Verification does not refresh a copy's creation date.");
+                    SecurityPreferences.Update(p => p.LastBackupAgeNoticeUtc = now);
+                }
+            }
             if (prefs.CheckGitHubOnStartup && !checkedGitHub)
             {
                 checkedGitHub = true;
@@ -32,11 +41,16 @@ internal sealed class SecurityScheduler : IDisposable
                 if (!disposed) notify(update);
             }
             if (prefs.Reminders && now - prefs.LastReminderUtc >= TimeSpan.FromDays(prefs.ReminderDays)
-                && (now - prefs.LastReviewUtc >= TimeSpan.FromDays(prefs.ReminderDays)
-                    || now - prefs.LastBackupVerifiedUtc >= TimeSpan.FromDays(prefs.ReminderDays)))
+                && now - prefs.LastReviewUtc >= TimeSpan.FromDays(prefs.ReminderDays))
             {
-                notify("Security reminder: review protection and verify an encrypted backup in Security Center → Security tools.");
+                notify("Security reminder: review protection in Security Center → Security tools.");
                 SecurityPreferences.Update(p => p.LastReminderUtc = now);
+            }
+            if (prefs.DiskHealthWarnings && now - prefs.LastDiskHealthAttemptUtc >= TimeSpan.FromHours(prefs.DiskCheckHours))
+            {
+                SecurityPreferences.Update(p => p.LastDiskHealthAttemptUtc = now);
+                await Task.Run(DiskHealthChecks.Run);
+                if (!disposed) { string message = DiskHealthChecks.Notification(); if (message != null) notify(message); }
             }
             if (prefs.FolderCheckHours > 0 && now - prefs.LastFolderCheckUtc >= TimeSpan.FromHours(prefs.FolderCheckHours))
             {
