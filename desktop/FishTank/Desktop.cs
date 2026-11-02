@@ -32,6 +32,12 @@ public sealed class Desktop : Form
 
 	private bool observing;
 
+	private AppLockController appLock;
+	private SecurityScheduler securityScheduler;
+	private bool closingWhileLocked;
+	private NotifyIcon securityIcon;
+	private bool resourcesDisposed;
+
 	private string current = "Dashboard";
 
 	private string lastScan = "No scan recorded";
@@ -121,30 +127,51 @@ public sealed class Desktop : Form
 		{
 		}
 		BuildShell();
+		appLock = new AppLockController(this, SetStatus);
+		securityScheduler = new SecurityScheduler(NotifySecurity);
 		if (appearance.StartMaximized)
 		{
 			base.WindowState = FormWindowState.Maximized;
 		}
-		base.FormClosed += delegate
-		{
-			monitor.Dispose();
-			tips.Dispose();
-			if (artwork != null)
-			{
-				artwork.Dispose();
-			}
-			if (displayArtwork != null)
-			{
-				displayArtwork.Dispose();
-			}
-		};
 		base.FormClosing += delegate(object s, FormClosingEventArgs e)
 		{
-			if (busy && !Confirm("An operation is still running. Closing FishTank may leave the Windows operation running without its final application record. Close anyway?"))
+			if (!closingWhileLocked && busy && !Confirm("An operation is still running. Closing FishTank may leave the Windows operation running without its final application record. Close anyway?"))
 			{
 				e.Cancel = true;
 			}
 		};
+	}
+
+	internal void CloseWhileLocked() { closingWhileLocked = true; ReturnToSignIn = false; Close(); }
+
+	protected override void Dispose(bool disposing)
+	{
+		if (disposing && !resourcesDisposed)
+		{
+			resourcesDisposed = true;
+			appLock?.Dispose(); securityScheduler?.Dispose(); securityIcon?.Dispose();
+			monitor.Dispose(); tips.Dispose(); artwork?.Dispose(); displayArtwork?.Dispose(); ownedIcon?.Dispose();
+		}
+		base.Dispose(disposing);
+	}
+
+	private void NotifySecurity(string message)
+	{
+		if (IsDisposed) return;
+		SetStatus(message);
+		try
+		{
+			if (!SecurityPreferences.Load().DesktopNotifications) return;
+			if (securityIcon == null) securityIcon = new NotifyIcon { Icon = SystemIcons.Shield, Text = "FishTank security", Visible = true };
+			securityIcon.ShowBalloonTip(8000, "FishTank security", "A security reminder or integrity review needs attention. Open FishTank to review it.", ToolTipIcon.Info);
+		}
+		catch { /* The saved report/status remains available if Windows notifications are unavailable. */ }
+	}
+
+	protected override bool ProcessCmdKey(ref Message message, Keys keys)
+	{
+		if (keys == (Keys.Control | Keys.Shift | Keys.L)) { appLock?.Lock(); return true; }
+		return base.ProcessCmdKey(ref message, keys);
 	}
 
 	private float TextSize(float size)
@@ -316,7 +343,7 @@ public sealed class Desktop : Form
 		}
 		panel4.AutoScrollMinSize = new Size(0, num);
 		UpdateNavigation(panel4);
-		Label label3 = Label("WINDOWS SECURITY COMPANION\nDevelopment preview · 0.6.1", 8f, palette.Muted);
+		Label label3 = Label("WINDOWS SECURITY COMPANION\nDevelopment preview · 0.7.0", 8f, palette.Muted);
 		label3.Dock = DockStyle.Bottom;
 		label3.Height = (int)TextSize(52f);
 		label3.Visible = appearance.ShowFooter;
@@ -803,6 +830,7 @@ public sealed class Desktop : Form
 		case "Security Center":
 			Header("Security center", "Review protection and check downloaded files before opening them.");
 			ShowSecurityChecklist();
+			ActionRow(Button("Security and integrity tools", OpenSecurityTools, true));
 			ActionRow(Button("Verify a download checksum", VerifyDownload, true),
 				Button("Open Windows Security", () => Process.Start(new ProcessStartInfo("windowsdefender:") { UseShellExecute = true }), false));
 			if (appearance.AdvancedMode)
@@ -863,6 +891,7 @@ public sealed class Desktop : Form
 		{
 			Header("Settings", "Choose a simple view or explore advanced tools.");
 			AddViewControls();
+			ActionRow(Button("Locking, reminders and verified updates", OpenSecurityTools, false));
 			Surface surface = Card(195);
 			Label label = Label("Appearance & accessibility", 18f, palette.Text);
 			label.Font = Face(18f, FontStyle.Bold);
@@ -894,9 +923,7 @@ public sealed class Desktop : Form
 				}
 				else
 				{
-					AppAccess.Lock();
-					ReturnToSignIn = true;
-					Close();
+					appLock.Lock();
 				}
 			}, primary: false));
 			MfaStatus mfa = AppAccess.Mfa;
@@ -923,6 +950,11 @@ public sealed class Desktop : Form
 		}
 		}
 		FitPage();
+	}
+
+	private void OpenSecurityTools()
+	{
+		using (var tools = new SecurityToolsDialog(palette, appearance.AdvancedMode, appearance.TextScale / 100f)) { tools.Icon = Icon; tools.ShowDialog(this); }
 	}
 
 	private void AddViewControls()

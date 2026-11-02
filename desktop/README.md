@@ -9,6 +9,8 @@ b60bd306b6a9366f6eee4777b8b7f093f7bd59c1087b0422fd1f74273cdc99e1  FishTank.exe
 
 This is recovered source, not the lost original files. Original comments, source layout, tests, and some local names cannot be recovered. The collector PowerShell script, image, and icon were recovered as embedded resources. The generated project was adjusted to use portable framework references and target .NET Framework 4.8, matching the supplied build documentation. No application behavior was intentionally changed.
 
+That paragraph describes the initial recovery. Subsequent development adds the [0.7.0 security and integrity features](../docs/SECURITY-AND-INTEGRITY.md); new regression tests are under `tests/`. Original uploaded binaries remain in `windows/`; updated unsigned preview builds are packaged separately.
+
 ## Build
 
 Install the .NET 8 SDK. From the repository root:

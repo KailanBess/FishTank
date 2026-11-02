@@ -1,5 +1,7 @@
 # Simple and Advanced update
 
+This records the initial 0.6.1 UI work. The current preview also includes the [0.7.0 security workspace and its validation requirements](SECURITY-AND-INTEGRITY.md).
+
 Simple view is the default: Dashboard, Antivirus, Security Center, Breach Checks, Passwords, and Settings. Switch views on Dashboard or Settings. Advanced view adds monitoring, network inventory, system repairs, manual quarantine, and Tailscale devices. Detailed scan and diagnostic controls appear in Advanced view. Changing views does not change protection, credentials, monitoring, or Windows policy. It is a presentation preference, not an authorization boundary.
 
 New profiles default to simple explanations. Existing saved explanation preferences remain respected. Essential warnings and original technical details remain available.

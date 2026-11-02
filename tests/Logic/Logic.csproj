@@ -4,5 +4,11 @@
     <Compile Include="../../desktop/FishTank/DownloadChecksum.cs" Link="DownloadChecksum.cs" />
     <Compile Include="../../desktop/FishTank/NavigationPolicy.cs" Link="NavigationPolicy.cs" />
     <Compile Include="../../desktop/FishTank/ScanPaths.cs" Link="ScanPaths.cs" />
+    <Compile Include="../../desktop/FishTank/FolderIntegrity.cs" Link="FolderIntegrity.cs" />
+    <Compile Include="../../desktop/FishTank/EvidenceComparison.cs" Link="EvidenceComparison.cs" />
+    <Compile Include="../../desktop/FishTank/UpdateVersionPolicy.cs" Link="UpdateVersionPolicy.cs" />
+    <Compile Include="../../desktop/FishTank/UpdateUrlPolicy.cs" Link="UpdateUrlPolicy.cs" />
+    <Compile Include="../../desktop/FishTank/TransferLimits.cs" Link="TransferLimits.cs" />
+    <Compile Include="../../desktop/FishTank/Totp.cs" Link="Totp.cs" />
   </ItemGroup>
 </Project>

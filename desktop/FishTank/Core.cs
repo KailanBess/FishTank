@@ -171,7 +171,7 @@ public static class Core
 
 	public static string Collect(string mode)
 	{
-		if (Array.IndexOf(new string[9] { "Health", "Network", "Persistence", "Events", "Tailscale", "Hardening", "Accounts", "Browsers", "ScanPolicy" }, mode) < 0)
+		if (Array.IndexOf(new string[] { "Health", "Network", "Persistence", "Events", "Tailscale", "Hardening", "Accounts", "Browsers", "ScanPolicy", "SecurityHealth", "StartupInventory", "Permissions", "Exposure" }, mode) < 0)
 		{
 			throw new ArgumentException("Unknown collector");
 		}

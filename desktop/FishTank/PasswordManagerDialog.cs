@@ -313,6 +313,8 @@ public sealed class PasswordManagerDialog : Form
 		state.Text = "Locked · Master passphrase required. Generator works without a vault. Auto-lock after 5 minutes of inactivity or when Windows locks.";
 	}
 
+	internal void LockForAppLock() { LockVault(); }
+
 	private void RefreshEntries()
 	{
 		if (list == null)

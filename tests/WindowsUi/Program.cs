@@ -58,6 +58,61 @@ internal static class Program
                         Check(flow.Controls.Cast<Control>().All(c => c.Width <= flow.ClientSize.Width), "Page requires horizontal scrolling");
                     }
                 }
+                using (var tools = new SecurityToolsDialog(Palette.From(appearance), advanced, scale / 100f))
+                {
+                    tools.Size = new Size(760, 620);
+                    tools.StartPosition = FormStartPosition.Manual;
+                    tools.Location = new Point(-30000, -30000);
+                    tools.ShowInTaskbar = false;
+                    tools.Show();
+                    var tabs = Descendants(tools).OfType<TabControl>().Single();
+                    foreach (TabPage tab in tabs.TabPages)
+                    {
+                        tabs.SelectedTab = tab;
+                        tools.PerformLayout(); Application.DoEvents();
+                        Check(Descendants(tab).OfType<Button>().Any(), "Security tab has no actions");
+                        foreach (var input in Descendants(tab).OfType<TextBox>().Where(t => t.Parent is FlowLayoutPanel))
+                            Check(!string.IsNullOrEmpty(input.AccessibleName), "Security input lacks accessible name");
+                        using (var bitmap = new Bitmap(tools.Width, tools.Height))
+                        {
+                            tools.DrawToBitmap(bitmap, new Rectangle(Point.Empty, tools.Size));
+                            bitmap.Save(Path.Combine(output, $"tools-{theme}-{scale}-{advanced}-{tab.Text.Replace(' ', '-')}.png"));
+                        }
+                    }
+                    tools.Hide();
+                }
+            }
+            const string password = "Test-only UI lock passphrase 2026!";
+            AppAccess.SetPassword(null, password);
+            using (var owner = new Desktop())
+            using (var vault = new PasswordManagerDialog(Palette.From(new FishTank.Appearance())))
+            using (var responder = new Timer { Interval = 50 })
+            {
+                owner.StartPosition = FormStartPosition.Manual; owner.Location = new Point(-30000, -30000); owner.ShowInTaskbar = false;
+                vault.StartPosition = FormStartPosition.Manual; vault.Location = new Point(-30000, -30000); vault.ShowInTaskbar = false;
+                owner.Show(); vault.Show(owner);
+                var sessionField = typeof(PasswordManagerDialog).GetField("session", BindingFlags.Instance | BindingFlags.NonPublic);
+                sessionField.SetValue(vault, PasswordSession.Create(Path.Combine(temp, "lock-test.ftvault"), password));
+                Exception failure = null; bool submitted = false;
+                responder.Tick += delegate {
+                    if (submitted) return;
+                    var prompt = Application.OpenForms.Cast<Form>().OfType<AppUnlockDialog>().FirstOrDefault();
+                    if (prompt == null) return;
+                    submitted = true;
+                    try {
+                        Check(!owner.Visible && !vault.Visible, "Sensitive windows remained visible while app locked");
+                        Check(sessionField.GetValue(vault) == null, "App locking left password vault unlocked");
+                        Check(!AppAccess.SessionUnlocked, "App session not locked before sign-in");
+                    } catch (Exception ex) { failure = ex; }
+                    ((TextBox)typeof(AppUnlockDialog).GetField("password", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(prompt)).Text = password;
+                    ((Button)typeof(AppUnlockDialog).GetField("unlock", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(prompt)).PerformClick();
+                };
+                responder.Start();
+                var controller = (AppLockController)typeof(Desktop).GetField("appLock", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(owner);
+                controller.Lock();
+                responder.Stop();
+                if (failure != null) throw failure;
+                Check(submitted && AppAccess.SessionUnlocked && owner.Visible && vault.Visible, "App did not restore its UI after verified sign-in");
             }
             Console.WriteLine(checks + " Windows UI checks passed; inspect PNGs for text clipping, focus, and spacing.");
             return 0;

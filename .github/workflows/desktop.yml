@@ -9,6 +9,7 @@ permissions:
 jobs:
   windows:
     runs-on: windows-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -16,6 +17,19 @@ jobs:
           dotnet-version: 8.0.x
       - name: Check checksum and navigation behavior
         run: dotnet run --project tests/Logic/Logic.csproj
+      - name: Parse embedded Windows PowerShell resources
+        shell: powershell
+        run: ./tests/Check-PowerShell.ps1
+      - name: Check collector interpretation with fixtures
+        shell: powershell
+        run: ./tests/Test-Collectors.ps1
+      - name: Build Windows security checks
+        run: dotnet build tests/WindowsSecurity/WindowsSecurity.csproj -c Release
+      - name: Exercise authentication, encrypted backups and Windows collectors
+        shell: pwsh
+        run: |
+          & ./tests/WindowsSecurity/bin/Release/net48/WindowsSecurity.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build Windows UI regression checks
         run: dotnet build tests/WindowsUi/WindowsUi.csproj -c Release
       - name: Exercise pages and capture screenshots
@@ -25,15 +39,15 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build CLI
         run: dotnet build desktop/FishTank.csproj -c Release -p:BuildCli=true
+      - name: Package unsigned preview
+        shell: pwsh
+        run: ./scripts/Package-Preview.ps1 -NoBuild
       - name: Save unsigned Windows builds
         uses: actions/upload-artifact@v4
         with:
           name: FishTank-unsigned-development
           path: |
-            desktop/bin/Release/net48/FishTank.exe
-            desktop/bin/Release/net48/FishTank.exe.config
-            desktop/bin/Release/cli/net48/FishTank.Cli.exe
-            desktop/bin/Release/cli/net48/FishTank.Cli.exe.config
+            packages/FishTank-desktop-preview.zip
       - name: Save UI review screenshots
         if: always()
         uses: actions/upload-artifact@v4

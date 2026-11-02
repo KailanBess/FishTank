@@ -1,4 +1,4 @@
-param([ValidateSet('Health','Network','Persistence','Events','Tailscale','Hardening','Accounts','Browsers','ScanPolicy')][string]$Mode='Health')
+param([ValidateSet('Health','Network','Persistence','Events','Tailscale','Hardening','Accounts','Browsers','ScanPolicy','SecurityHealth','StartupInventory','Permissions','Exposure')][string]$Mode='Health')
 $ErrorActionPreference='Stop'
 $ProgressPreference='SilentlyContinue'
 function Read-Check($Name,[scriptblock]$Read) {
@@ -15,7 +15,65 @@ function Read-LocalJson([string]$Path){
  for($part=$item;$null -ne $part;$part=$part.Parent){if($part.Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'Reparse-point profile paths are not inspected.'};if($part -is [IO.FileInfo]){$part=$part.Directory;if($null -ne $part -and ($part.Attributes -band [IO.FileAttributes]::ReparsePoint)){throw 'Reparse-point profile paths are not inspected.'}}}
  Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
 }
+
+function Get-TextHash([string]$Text) {
+ $sha=[Security.Cryptography.SHA256]::Create()
+ try {([BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($Text)))).Replace('-','')}
+ finally {$sha.Dispose()}
+}
 $result = switch($Mode) {
+
+ 'SecurityHealth' {
+  Read-SafetyCheck 'Defender real-time protection' {$p=Get-MpComputerStatus;if($null -eq $p.RealTimeProtectionEnabled){throw 'Protection status unavailable'};@{Problem=(!$p.RealTimeProtectionEnabled);Evidence="Real-time protection: $($p.RealTimeProtectionEnabled); mode: $($p.AMRunningMode)";Recommendation='Review Windows Security; another antivirus or organizational policy may control this device.'}}
+  Read-SafetyCheck 'Defender signatures' {$p=Get-MpComputerStatus;if($null -eq $p.AntivirusSignatureAge){throw 'Signature age unavailable'};@{Problem=($p.AntivirusSignatureAge -gt 2);Evidence="Signature age in days: $($p.AntivirusSignatureAge); version: $($p.AntivirusSignatureVersion)";Recommendation='Review signature updates. Recent signatures do not prove the device is malware-free.'}}
+  Read-SafetyCheck 'Windows Firewall' {$p=@(Get-NetFirewallProfile);if($p.Count -eq 0){throw 'No firewall profiles returned'};@{Problem=(@($p | Where-Object {!$_.Enabled}).Count -gt 0);Evidence=($p | Sort-Object Name | Select-Object Name,Enabled | ConvertTo-Json -Compress);Recommendation='Review disabled profiles in Windows Security; do not change managed policy without your administrator.'}}
+  Read-SafetyCheck 'Secure Boot' {$p=Confirm-SecureBootUEFI;if($null -eq $p){throw 'Secure Boot status unavailable'};@{Problem=(!$p);Evidence="Secure Boot enabled: $p";Recommendation='Review firmware support and recovery keys before changing boot settings.'}}
+  Read-SafetyCheck 'System-drive encryption' {$drive=$env:SystemDrive;$p=Get-BitLockerVolume -MountPoint $drive;if($null -eq $p.ProtectionStatus){throw 'Encryption status unavailable'};@{Problem=([int]$p.ProtectionStatus -ne 1);Evidence="Drive: $drive; protection: $($p.ProtectionStatus); volume: $($p.VolumeStatus)";Recommendation='Review device encryption and safely store its recovery key. Some editions do not expose BitLocker management.'}}
+  Read-SafetyCheck 'Windows Update service' {$p=Get-Service wuauserv;@{Problem=($p.StartType -eq 'Disabled');Evidence="Startup type: $($p.StartType)";Recommendation='A demand-start service may normally be stopped. Open Windows Update for an actual missing-update check; this local review does not contact update servers.'}}
+  Read-SafetyCheck 'Pending restart indicators' {$p=(Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending') -or (Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired');@{Problem=$p;Evidence="Known restart marker present: $p";Recommendation='Save work and review Windows Update. Absence of these markers does not prove every update is installed.'}}
+ }
+ 'StartupInventory' {
+  Read-Check 'Coverage' {'Read-only startup commands, scheduled task definitions and automatic services. Command/action content is hashed, not retained. Disabled and running task states are not treated as a compromise verdict.'}
+  try {
+   $items=@(Get-CimInstance Win32_StartupCommand | Sort-Object Location,User,Name,Command)
+   if($items.Count -gt 500){[pscustomobject]@{Name='Startup coverage limit';State='Unknown';Value='More than 500 startup commands; inventory is partial.'}}
+   foreach($p in ($items | Select-Object -First 500)){$hash=Get-TextHash ([string]$p.Command);[pscustomobject]@{Name="Startup|$($p.Location)|$($p.User)|$($p.Name)|$hash";State='Observed';Value="Command SHA-256: $hash"}}
+  } catch {[pscustomobject]@{Name='Startup inventory unavailable';State='Unknown';Value=$_.Exception.Message}}
+  try {
+   $items=@(Get-ScheduledTask | Sort-Object TaskPath,TaskName)
+   if($items.Count -gt 500){[pscustomobject]@{Name='Task coverage limit';State='Unknown';Value='More than 500 tasks; inventory is partial.'}}
+   foreach($p in ($items | Select-Object -First 500)){$definition=@{Actions=@($p.Actions | Select-Object Execute,Arguments,WorkingDirectory,ClassId);Triggers=@($p.Triggers | Select-Object Enabled,StartBoundary,EndBoundary,DaysInterval,WeeksInterval,DaysOfWeek,MonthsOfYear,DaysOfMonth,UserId,Delay);Principal=($p.Principal | Select-Object UserId,GroupId,RunLevel,LogonType)} | ConvertTo-Json -Compress -Depth 5;[pscustomobject]@{Name="Task|$($p.TaskPath)$($p.TaskName)";State='Observed';Value="Enabled: $($p.Settings.Enabled); definition SHA-256: $(Get-TextHash $definition)"}}
+  } catch {[pscustomobject]@{Name='Task inventory unavailable';State='Unknown';Value=$_.Exception.Message}}
+  try {
+   $items=@(Get-CimInstance Win32_Service | Where-Object {$_.StartMode -eq 'Auto'} | Sort-Object Name)
+   if($items.Count -gt 500){[pscustomobject]@{Name='Service coverage limit';State='Unknown';Value='More than 500 automatic services; inventory is partial.'}}
+   foreach($p in ($items | Select-Object -First 500)){[pscustomobject]@{Name="Service|$($p.Name)";State='Observed';Value="Account: $($p.StartName); command SHA-256: $(Get-TextHash ([string]$p.PathName))"}}
+  } catch {[pscustomobject]@{Name='Service inventory unavailable';State='Unknown';Value=$_.Exception.Message}}
+ }
+ 'Permissions' {
+  foreach($kind in @('webcam','microphone','location')){
+   Read-Check "$kind current-user consent" {
+    $root="HKCU:\Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\$kind"
+    if(!(Test-Path -LiteralPath $root)){return 'No explicit current-user consent record found. This is not proof access is denied; review Windows Privacy settings.'}
+    $items=@(Get-Item -LiteralPath $root)+@(Get-ChildItem -LiteralPath $root -Recurse | Select-Object -First 300)
+    $items | Sort-Object Name | Select-Object -First 300 | ForEach-Object {$p=Get-ItemProperty -LiteralPath $_.PSPath;[pscustomobject]@{Application=$_.Name;Consent=$p.Value}} | ConvertTo-Json -Compress -Depth 4
+    if($items.Count -gt 300){'PARTIAL: only the first 300 records were inspected.'}
+   }
+  }
+  Read-Check 'Machine app privacy policy' {$root='HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy';if(!(Test-Path $root)){return 'No explicit machine AppPrivacy policy. Per-app and Windows privacy settings still apply.'};Get-ItemProperty -LiteralPath $root | Select-Object LetAppsAccessCamera,LetAppsAccessMicrophone,LetAppsAccessLocation | ConvertTo-Json -Compress}
+  Read-Check 'Interpretation' {'Consent metadata can be absent or stale and does not cover every desktop application. Use Windows Privacy settings and the separate browser extension review. This inventory changes no permissions.'}
+ }
+ 'Exposure' {
+  Read-Check 'TCP listening ports and owning processes' {
+   $items=@(Get-NetTCPConnection -State Listen | Sort-Object LocalAddress,LocalPort,OwningProcess)
+   $items | Select-Object -First 500 | ForEach-Object {$name='Unknown';try{$name=(Get-Process -Id $_.OwningProcess).ProcessName}catch{};[pscustomobject]@{Address=$_.LocalAddress;Port=$_.LocalPort;Process=$name;Pid=$_.OwningProcess;Binding=$(if($_.LocalAddress -in @('127.0.0.1','::1')){'Loopback'}elseif($_.LocalAddress -in @('0.0.0.0','::')){'All interfaces'}else{'Specific interface'})}} | ConvertTo-Json -Compress
+   if($items.Count -gt 500){'PARTIAL: first 500 listeners.'}
+  }
+  Read-Check 'UDP bound endpoints' {$items=@(Get-NetUDPEndpoint | Sort-Object LocalAddress,LocalPort,OwningProcess);$items | Select-Object -First 500 LocalAddress,LocalPort,OwningProcess | ConvertTo-Json -Compress;if($items.Count -gt 500){'PARTIAL: first 500 UDP endpoints.'}}
+  Read-Check 'Enabled inbound allow rules and port filters' {$rules=@(Get-NetFirewallRule -Enabled True -Direction Inbound -Action Allow | Sort-Object Name);foreach($rule in ($rules | Select-Object -First 100)){$ports=@($rule | Get-NetFirewallPortFilter);[pscustomobject]@{Name=$rule.DisplayName;Profile=[string]$rule.Profile;Ports=@($ports | Select-Object Protocol,LocalPort,RemotePort)} | ConvertTo-Json -Compress -Depth 5};if($rules.Count -gt 100){'PARTIAL: first 100 inbound allow rules.'}}
+  Read-Check 'Reachability limits' {'A listener or allow rule is not proof of internet reachability or maliciousness. Effective access also depends on rule scope, interfaces, upstream firewalls, routers and VPN policy. Process IDs change normally. No remote probe or firewall change was made.'}
+ }
+
  'ScanPolicy' {
   Read-Check 'Defender scanner / signatures / active mode' {Get-MpComputerStatus | Select-Object AMRunningMode,AntivirusEnabled,AMServiceEnabled,AMEngineVersion,AMProductVersion,AntivirusSignatureVersion,AntivirusSignatureLastUpdated,AntivirusSignatureAge,QuickScanEndTime,FullScanEndTime | Format-List}
   Read-Check 'Existing Defender scan policy (read only)' {Get-MpPreference | Select-Object DisableArchiveScanning,DisableRemovableDriveScanning,DisableScanningNetworkFiles,DisableScanningMappedNetworkDrivesForFullScan,ScanAvgCPULoadFactor,ScanOnlyIfIdleEnabled,DisableCpuThrottleOnIdleScans | Format-List}

@@ -387,6 +387,11 @@ public static class AppAccess
 		verifiedCredential = null;
 	}
 
+	internal static void ChangeSecurityConfiguration(string password, string factor, Action change)
+	{
+		MutateMfa(password, factor, DateTime.UtcNow, delegate { change(); });
+	}
+
 	public static string[] EnrollMfa(string password, string oldFactor, string secret, string confirmation, DateTime utcNow)
 	{
 		byte[] array = Totp.Decode(secret);
