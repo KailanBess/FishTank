@@ -28,7 +28,8 @@ public static class TrustedDownloads
             string command = Convert.ToBase64String(Encoding.Unicode.GetBytes("& {" + script + "\n} -RequestBase64 " + request));
             string powershell = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "WindowsPowerShell\\v1.0\\powershell.exe");
             var result = Core.Run(powershell, "-NoProfile -NonInteractive -EncodedCommand " + command, 90000);
-            if (result.ExitCode != 0) throw new IOException("Windows signature verification failed. Publisher trust remains unknown.");
+            if (result.ExitCode != 0) throw new IOException("Windows signature verification failed (exit " + result.ExitCode + "). Publisher trust remains unknown.\n"
+                + (result.Error.Length > 2048 ? result.Error.Substring(0, 2048) : result.Error));
             return Core.Parse<PublisherSignature>(result.Output) ?? throw new IOException("No signature evidence returned.");
         }
     }
