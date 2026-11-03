@@ -30,7 +30,7 @@ public sealed partial class Desktop : Form
 	private FolderMonitor monitor = new FolderMonitor();
 
 	private bool busy;
-	internal bool HasRunningOperation => busy || ScanQueueStore.Running || foregroundScan?.IsRunning == true || (securityScheduler?.IsScanning ?? false);
+	internal bool HasRunningOperation => busy || everydayWorking || ScanQueueStore.Running || foregroundScan?.IsRunning == true || (securityScheduler?.IsScanning ?? false);
 
 	private bool observing;
 
@@ -146,6 +146,7 @@ public sealed partial class Desktop : Form
 		liveDisplay.Tick += delegate { RefreshLiveDisplay(); DispatchNotification(); browserBackend?.CheckIdle(); if (browser != null && !BrowserAccessAllowed()) LockBrowserSession(); }; liveDisplay.Start();
 		bool liveStarted = false;
         Shown += delegate { BeginInvoke((Action)OfferInitialSetup); };
+        Shown += delegate { try { if (AppReleaseNotes.Announce()) NotifySecurity("New FishTank release notes are available. Open What's new from All tools to review the installed version's additions."); } catch { SetStatus("Release notes are available in All tools; their read state could not be saved."); } };
 		Shown += delegate {
 			if (liveStarted) return; liveStarted = true;
 			try { if (SecurityPreferences.Load().LiveDetectionEnabled) liveDetection.Start(); }

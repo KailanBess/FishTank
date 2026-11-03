@@ -42,10 +42,16 @@ internal static class ToolCatalog
 {
     internal static readonly ToolDefinition[] All = {
         new ToolDefinition("search","Search all tools","global command palette favorites recent"),
+        new ToolDefinition("changes","Security changes","compare previous current recorded protection checks history"),
+        new ToolDefinition("cleanup","Storage cleanup preview","old temporary downloads selective removal space"),
+        new ToolDefinition("transfer","Portable profile transfer","export import preview migrate PC reenroll vault appearance"),
+        new ToolDefinition("demo","Sample demonstration mode","safe simulated scan backup vault example"),
+        new ToolDefinition("notes","What's new","release notes updates version new features"),
+        new ToolDefinition("server","Server connection wizard","HTTPS setup token email SMS delivery troubleshooting passkeys"),
         new ToolDefinition("notices","Notification center","alerts severity snooze quiet hours deduplicate"),
         new ToolDefinition("backups","Automatic encrypted backups","retention destination restore drill"),
         new ToolDefinition("queue","Scan queue and profiles","multiple targets compare results exclusions external drive"),
-        new ToolDefinition("vault","Password vault","history expiry duplicate attachments import export undo"),
+        new ToolDefinition("vault","Password vault","health dashboard expired weak reused history expiry duplicate attachments import export undo"),
         new ToolDefinition("profiles","Profiles and layouts","multiple device portable migrate appearance shortcuts compact"),
         new ToolDefinition("devices","Devices and signed reports","inventory remote server health signature sharing"),
         new ToolDefinition("passkeys","Passkeys and security keys","server WebAuthn authenticator sessions recovery codes"),

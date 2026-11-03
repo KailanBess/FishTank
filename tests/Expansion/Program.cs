@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using FishTank;
@@ -35,6 +36,27 @@ internal static class Program
             Reject<UnauthorizedAccessException>(()=>DeviceReports.Verify(report,new string('0',64)),"Untrusted key accepted");report.Payload=Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("tampered"));Reject<UnauthorizedAccessException>(()=>DeviceReports.Verify(report,report.Fingerprint),"Tampered signature accepted");
             ScanQueueStore.Add("Quick",null);ScanQueueStore.Add("Full",null);int scans=0;ScanQueueStore.RunAsync(job=>{scans++;return Task.FromResult("fixture result");},()=>false).GetAwaiter().GetResult();Check(scans==2&&ScanQueueStore.Read().All(x=>x.State=="Completed"),"Queue did not run sequentially");
             var random=new Random(5347);for(int i=0;i<200;i++){string input=new string(Enumerable.Range(0,random.Next(80)).Select(_=>"a,\"\r\n"[random.Next(5)]).ToArray());try{var parsed=VaultTransfer.Parse(input,true);foreach(var e in parsed)e.Validate();}catch(InvalidDataException){}catch(FormatException){}}Check(true,"CSV fuzz cases");
+            var now=DateTime.UtcNow;
+            var health=VaultHealth.Assess(DemoSamples.Entries(now),now);Check(health.Count==2&&health.All(x=>x.Finding.Contains("Reused")),"Vault health did not group reused passwords");Check(health.Any(x=>x.Finding.Contains("Expired"))&&health.Any(x=>x.Finding.Contains("within 14")),"Expiry findings missing");Check(!Core.Json(health).Contains("demo-only"),"Health dashboard exposed passwords");
+            Check(VaultHealth.Assess(new[]{new PasswordEntry{Title="Pattern fixture",Password="passwordpassword"}},now).Single().Finding.Contains("Repeated"),"Repeated long password pattern was missed");
+            Check(DemoSamples.Simulate("scan").StartsWith("SIMULATED")&&DemoSamples.Simulate("restore").Contains("No real files"),"Demo actions not explicitly simulated");
+            Reject<ArgumentException>(()=>DemoSamples.Simulate("real-scan"),"Unknown demo action accepted");
+            string tempName="github-download-"+Guid.NewGuid().ToString("N")+".exe",tempPath=Path.Combine(root,tempName);File.WriteAllText(tempPath,"fixture download");File.SetLastWriteTimeUtc(tempPath,now.AddDays(-10));
+            string unrelated=Path.Combine(root,"keep-me.tmp");File.WriteAllText(unrelated,"unrelated fixture");File.SetLastWriteTimeUtc(unrelated,now.AddDays(-10));
+            var cleanup=StorageCleanup.Preview(now);Check(cleanup.Count==1&&cleanup[0].Name==tempName,"Cleanup included unrecognized or vault files");
+            File.WriteAllText(tempPath,"modified fixture");File.SetLastWriteTimeUtc(tempPath,cleanup[0].ModifiedUtc);Reject<IOException>(()=>StorageCleanup.Delete(cleanup[0],now),"Changed cleanup file deleted");
+            cleanup=StorageCleanup.Preview(now);StorageCleanup.Delete(cleanup.Single(),now);Check(!File.Exists(tempPath)&&File.Exists(unrelated)&&File.Exists(PasswordSession.DefaultPath),"Cleanup removed unrelated files or vault");
+            Reject<ArgumentException>(()=>StorageCleanup.Delete(new CleanupCandidate{Name="../passwords.ftvault"},now),"Cleanup accepted traversal");
+            var bundle=PortableProfileTransfer.Capture(new Appearance());var transferred=PortableProfileTransfer.Parse(System.Text.Encoding.UTF8.GetBytes(Core.Json(bundle)));string importedRoot=Path.Combine(root,"portable-target");string importedProfile=PortableProfileTransfer.Import(transferred,importedRoot,"sample");
+            using(var opened=PasswordSession.Open(Path.Combine(importedProfile,"passwords.ftvault"),"Fixture-only vault passphrase 2026!"))Check(opened.Entries.Count==1,"Transferred encrypted vault failed authentication");
+            Check(!Directory.GetFiles(importedProfile).Any(x=>x.EndsWith(".dpapi"))&&PortableProfileTransfer.Scope.Contains("Reenroll"),"Profile transfer included Windows-bound secrets");
+            Reject<IOException>(()=>PortableProfileTransfer.Import(transferred,importedRoot,"sample"),"Import replaced an existing profile");
+            transferred.VaultSha256=new string('0',64);Reject<InvalidDataException>(()=>PortableProfileTransfer.Validate(transferred),"Corrupt transfer checksum accepted");
+            string watch=Path.Combine(root,"watch");Directory.CreateDirectory(watch);AutomaticBackups.Save(new CipherBackupPlan{Enabled=true,Destination=watch});Check(BackupDestinationWatch.Tick()==null,"Initial available destination alerted as failure");Directory.Delete(watch);Check(BackupDestinationWatch.Tick().Contains("needs attention"),"Disconnected destination did not alert");Check(BackupDestinationWatch.Tick()==null,"Disconnected destination repeated immediately");
+            string failure=AutomaticBackups.Tick();Check(failure.Contains("needs attention")&&AutomaticBackups.Load().LastAttemptUtc>DateTime.MinValue,"Unavailable backup failed to persist/throttle its failure");Check(AutomaticBackups.Tick()==null,"Failed scheduled copy retried immediately");Directory.CreateDirectory(watch);Check(BackupDestinationWatch.Tick().Contains("available again"),"Reconnected destination did not report recovery");
+            Check(BackupDestinationWatch.Assess(new CipherBackupPlan(),_=>throw new Exception(),(_,__)=>throw new Exception())=="Disabled","Disabled backup watcher accessed destination");
+            Check(AppReleaseNotes.IsUnread()&&AppReleaseNotes.Announce()&&!AppReleaseNotes.Announce(),"Release announcements repeat or disappeared");AppReleaseNotes.MarkRead();Check(!AppReleaseNotes.IsUnread(),"Release-note read state not saved");
+            Check(ServerConnectionAdvice.Explain(new IOException("fixture",new WebException("fixture",WebExceptionStatus.TrustFailure))).Contains("certificate"),"TLS setup guidance missing");
             Console.WriteLine(checks+" expansion checks passed, including 200 CSV fuzz inputs.");return 0;
         }
         catch(Exception ex){Console.Error.WriteLine(ex);return 1;}

@@ -15,6 +15,7 @@ public sealed partial class Desktop
             catch { Help(panel, "App access settings could not be read. Access remains protected; existing records have not been replaced."); }
             panel.Controls.Add(UtilityButton("Set or change app password", () => AppAccessSettings.Change(dialog)));
             panel.Controls.Add(UtilityButton("Remove app password", () => AppAccessSettings.Remove(dialog)));
+            panel.Controls.Add(UtilityButton("Server connection wizard", OpenServerWizard));
             panel.Controls.Add(UtilityButton("Authenticator and recovery codes", () => { using (var mfa = new MfaSettingsDialog(palette)) mfa.ShowDialog(dialog); }));
             panel.Controls.Add(UtilityButton("Lock app access now", () => { dialog.Close(); appLock.Lock(); }));
             panel.Controls.Add(UtilityButton("Idle locking and notifications", () => OpenToolsTab("Locking and reminders")));

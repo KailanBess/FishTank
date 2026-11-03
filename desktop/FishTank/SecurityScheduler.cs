@@ -39,6 +39,8 @@ internal sealed class SecurityScheduler : IDisposable
             }
             string backup = await Task.Run(AutomaticBackups.Tick);
             if (!disposed && backup != null) notify(backup);
+            string destination = await Task.Run(BackupDestinationWatch.Tick);
+            if (!disposed && destination != null) notify(destination);
             string drill=AutomaticBackups.DrillReminder();if(!disposed&&drill!=null)notify(drill);
             if (WorkspacePreferences.Load().ExternalDrivePrompts)
                 foreach (var drive in RemovableDriveOffers.Poll())

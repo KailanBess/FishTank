@@ -31,7 +31,7 @@ foreach($name in @('Install-FishTank.ps1','Uninstall-FishTank.ps1')){
  Copy-Item -LiteralPath $file -Destination $stage
 }
 Copy-Item -LiteralPath (Join-Path $root 'docs/RELEASE-AND-RECOVERY.md') -Destination $stage
-foreach($name in @('APP-EXPANSION.md','SERVER-EXPANSION.md','EXPANSION-VALIDATION.md')){Copy-Item -LiteralPath (Join-Path $root ('docs/'+$name)) -Destination $stage}
+foreach($name in @('APP-EXPANSION.md','EVERYDAY-TOOLS.md','SERVER-EXPANSION.md','EXPANSION-VALIDATION.md')){Copy-Item -LiteralPath (Join-Path $root ('docs/'+$name)) -Destination $stage}
 Copy-Item -LiteralPath (Join-Path $root 'packages/FishTank-sbom.json') -Destination $stage
 'Extract into a new folder. Verify publisher signatures and SHA256SUMS.txt. Run FishTank.exe. Use --portable for an isolated profile. Keep existing profiles and vault passphrases backed up privately.' | Set-Content -LiteralPath (Join-Path $stage 'README.txt') -Encoding UTF8
 $checks=Get-ChildItem -LiteralPath $stage -File | Sort-Object Name | ForEach-Object {((Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant())+'  '+$_.Name}

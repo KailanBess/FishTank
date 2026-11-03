@@ -15,6 +15,7 @@ try{
   'scripts/Uninstall-FishTank.ps1',
   'docs/EXPANSION-DESIGN.md',
   'docs/APP-EXPANSION.md',
+  'docs/EVERYDAY-TOOLS.md',
   'docs/EXPANSION-VALIDATION.md',
   'docs/SERVER-EXPANSION.md',
   'packages/FishTank-sbom.json',

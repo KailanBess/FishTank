@@ -93,6 +93,7 @@ public sealed partial class PasswordManagerDialog : Form
 		Add("Generate password", Generate);
 		Add("Encrypted backup", Backup);
         Add("History, expiry and attachments", EntryExtras);
+        Add("Vault health dashboard", ShowVaultHealth);
         Add("Import and export", TransferEntries);
         Add("Undo last change", () => { NeedUnlock(); session.UndoLastMutation(); RefreshEntries(); });
 		Add("Restore backup", delegate

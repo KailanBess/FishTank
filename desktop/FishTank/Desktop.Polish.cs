@@ -14,6 +14,7 @@ public static class NotificationDestination
     public static string For(string message)
     {
         message = (message ?? "").ToLowerInvariant();
+        if (message.Contains("release notes")) return "ReleaseNotes";
         return message.Contains("backup") ? "Recovery" : message.Contains("disk health") ? "Disk" : message.Contains("folder integrity") ? "Integrity" : message.Contains("scan") ? "Scan" : message.Contains("github") ? "Updates" : "Security";
     }
 }
@@ -50,6 +51,7 @@ public sealed partial class Desktop
         notificationPending = false;
         switch (notificationTarget)
         {
+            case "ReleaseNotes": OpenWhatsNew(); break;
             case "Monitoring": Navigate("Real-time monitoring"); using (var history = new LiveDetectionDialog(liveDetection, palette, appearance.AdvancedMode)) history.ShowDialog(this); break;
             case "Recovery": OpenRecoveryCenter(); break;
             case "Disk": OpenToolsTab("Security reviews"); break;

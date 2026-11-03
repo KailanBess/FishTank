@@ -12,6 +12,12 @@ public static class Program
 	{
 		try
 		{
+            if (args.Length == 1 && args[0] == "--demo")
+            {
+                Application.EnableVisualStyles(); Application.SetCompatibleTextRenderingDefault(false);
+                using (var demo = new DemoDialog()) Application.Run(demo);
+                return 0;
+            }
 			if (args.Length > 0 && args[0] == "--service")
 			{
 				ServiceBase.Run(new GuardService());

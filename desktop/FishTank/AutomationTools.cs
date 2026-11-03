@@ -63,6 +63,7 @@ internal static class AutomaticBackups
     private static readonly object Gate=new object();
     internal static CipherBackupPlan Load(){var p=ProtectedStore.Read("automatic-backup-plan",()=>new CipherBackupPlan())??throw new InvalidDataException("Backup plan unreadable.");p.Validate();return p;}
     internal static void Save(CipherBackupPlan plan){plan.Validate();if(plan.Enabled){plan.Destination=Path.GetFullPath(plan.Destination);if(!Directory.Exists(plan.Destination))throw new DirectoryNotFoundException("Choose an existing backup destination.");}ProtectedStore.Write("automatic-backup-plan",plan);}
+    private static void SaveRecordedState(CipherBackupPlan plan){plan.Validate();ProtectedStore.Write("automatic-backup-plan",plan);}
     internal static List<ManagedBackup> Manifest()=>ProtectedStore.Read("managed-backups",()=>new List<ManagedBackup>())??throw new InvalidDataException("Backup manifest unreadable.");
     internal static void RequireSpace(string destination,long bytes)
     {
@@ -95,13 +96,22 @@ internal static class AutomaticBackups
     internal static string Tick()
     {
         var p=Load();if(!p.Enabled || DateTime.UtcNow-p.LastAttemptUtc<TimeSpan.FromHours(p.IntervalHours))return null;
-        try{return CopyNow();}catch(Exception ex){p=Load();p.LastAttemptUtc=DateTime.UtcNow;p.LastResult="Automatic backup needs attention: "+ex.Message;Save(p);return p.LastResult;}
+        try{return CopyNow();}catch(Exception ex){p=Load();p.LastAttemptUtc=DateTime.UtcNow;p.LastResult="Automatic backup needs attention: "+ex.Message;SaveRecordedState(p);return p.LastResult;}
+    }
+    internal static string CopyWithStatus()
+    {
+        try { return CopyNow(); }
+        catch (Exception ex)
+        {
+            try { var p = Load(); p.LastAttemptUtc = DateTime.UtcNow; p.LastResult = "Manual backup failed: " + ex.Message; SaveRecordedState(p); } catch { }
+            throw;
+        }
     }
     internal static string DrillReminder()
     {
         var p=Load();if(!p.Enabled)return null;var now=DateTime.UtcNow;
         var last=BackupHistory.Observations().Where(x=>x.Kind==BackupHistory.PasswordVault).Select(x=>x.RestoreTestUtc).DefaultIfEmpty(DateTime.MinValue).Max();
         if(now-last<TimeSpan.FromDays(p.DrillDays)||now-p.LastDrillNoticeUtc<TimeSpan.FromDays(1))return null;
-        p.LastDrillNoticeUtc=now;Save(p);return "A password-vault restore drill is due. Open Recovery center to choose a backup and enter its passphrase. No plaintext restore or verification runs automatically.";
+        p.LastDrillNoticeUtc=now;SaveRecordedState(p);return "A password-vault restore drill is due. Open Recovery center to choose a backup and enter its passphrase. No plaintext restore or verification runs automatically.";
     }
 }

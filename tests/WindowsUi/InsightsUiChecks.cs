@@ -15,7 +15,7 @@ internal static class InsightsUiChecks
         using (var owner = new Desktop())
         {
             owner.StartPosition = FormStartPosition.Manual; owner.Location = new Point(-30000, -30000); owner.ShowInTaskbar = false; owner.Show();
-            foreach (string method in new[] { "OpenToolsHub", "OpenNotificationCenter", "OpenQueueCenter", "OpenBackupCenter", "OpenPrivacyCenter", "OpenProfilesAndLayouts", "OpenOfflineHelp", "OpenWindowsIntegration", "OpenDeviceCenter", "OpenPasskeyCenter", "OpenUpdateChannel", "OpenScanSchedule", "OpenFolderReminders", "OpenSettingsSearch", "OpenSupportReport", "OpenActivityTimeline", "OpenInitialSetup", "OpenRecoveryCenter", "OpenAccessibilityHelp", "OpenReleaseReadiness", "OpenAccessSettings", "OpenBrowserControls", "OpenMoreTools" })
+            foreach (string method in new[] { "OpenSecurityChanges", "OpenStorageCleanup", "OpenPortableTransfer", "OpenWhatsNew", "OpenServerWizard", "OpenToolsHub", "OpenNotificationCenter", "OpenQueueCenter", "OpenBackupCenter", "OpenPrivacyCenter", "OpenProfilesAndLayouts", "OpenOfflineHelp", "OpenWindowsIntegration", "OpenDeviceCenter", "OpenPasskeyCenter", "OpenUpdateChannel", "OpenScanSchedule", "OpenFolderReminders", "OpenSettingsSearch", "OpenSupportReport", "OpenActivityTimeline", "OpenInitialSetup", "OpenRecoveryCenter", "OpenAccessibilityHelp", "OpenReleaseReadiness", "OpenAccessSettings", "OpenBrowserControls", "OpenMoreTools" })
             {
                 Exception failure = null; bool visited = false;
                 using (var timer = new Timer { Interval = 250 })
@@ -35,6 +35,18 @@ internal static class InsightsUiChecks
                                 controls.OfType<TextBox>().Single(x => x.AccessibleName == "Search settings").Text = "MFA";
                                 check(controls.OfType<ListBox>().Single().Items.Count == 1, "Settings keyword search failed");
                             }
+                            if (method == "OpenServerWizard")
+                            {
+                                var steps = controls.OfType<TabControl>().Single();
+                                check(steps.TabPages.Count == 4, "Server wizard lacks four setup steps");
+                                check(controls.OfType<TextBox>().Single(x => x.AccessibleName == "Private server device token").UseSystemPasswordChar, "Server token is visible");
+                                for (int step = 0; step < steps.TabPages.Count; step++)
+                                {
+                                    steps.SelectedIndex = step; dialog.PerformLayout();
+                                    using (var bitmap = new Bitmap(dialog.Width, dialog.Height)) { dialog.DrawToBitmap(bitmap, new Rectangle(Point.Empty, dialog.Size)); bitmap.Save(Path.Combine(output, "ServerWizard-step" + step + ".png")); }
+                                }
+                                steps.SelectedIndex = 0;
+                            }
                             if (method == "OpenScanSchedule") check(!controls.OfType<CheckBox>().Single(x => x.Text == "Enable scheduled Defender scans").Checked, "Automatic scanning defaults on");
                             if (method == "OpenSupportReport")
                             {
@@ -53,6 +65,16 @@ internal static class InsightsUiChecks
                 }
                 if (failure != null) throw failure;
                 check(visited, method + " did not open");
+            }
+            string realProfile = Core.Data;
+            using (var demo = new DemoDialog())
+            {
+                demo.Show(owner);
+                var result = All(demo).OfType<TextBox>().Single();
+                foreach (var button in All(demo).OfType<Button>()) { button.PerformClick(); check(result.Text.StartsWith("SIMULATED"), "Demo action did not identify its sample result"); }
+                check(Core.Data == realProfile, "Demo changed the real profile");
+                using (var bitmap = new Bitmap(demo.Width, demo.Height)) { demo.DrawToBitmap(bitmap, new Rectangle(Point.Empty, demo.Size)); bitmap.Save(Path.Combine(output, "Demo.png")); }
+                demo.Close();
             }
             using (var release = new System.Threading.ManualResetEventSlim())
             {

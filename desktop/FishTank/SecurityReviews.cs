@@ -44,5 +44,10 @@ public static class SecurityReviews
         return Core.Json(EvidenceComparison.Compare(before, after));
     }
     public static string History() { lock (Gate) return Core.Json(Read()); }
+    internal static List<EvidenceSnapshot> Recorded(string category)
+    {
+        if (!Categories.Contains(category)) throw new ArgumentException("Unknown security review.");
+        lock (Gate) return Read().Where(x => x.Category == category).OrderBy(x => x.CapturedUtc).ToList();
+    }
     internal static EvidenceSnapshot Latest(string category) { lock (Gate) return Read().LastOrDefault(x => x.Category == category); }
 }

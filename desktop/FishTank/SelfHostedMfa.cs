@@ -89,7 +89,7 @@ public static class SelfHostedMfa
 				403 => "Code invalid, expired, context-mismatched or used.",
 				429 => "Delivery limit reached. Wait before requesting another code.",
 				_ => "Verification server unavailable or unauthorized (HTTP " + num2 + "). No verification was granted.",
-			});
+			}, ex);
 		}
 	}
 
