@@ -15,6 +15,8 @@ public sealed class AppearanceDialog : Form
 	private Appearance original;
 
 	private bool loading;
+    private readonly Timer previewDelay = new Timer { Interval = 120 };
+    private Appearance pendingPreview;
 
 	private TabControl tabs;
 
@@ -31,6 +33,7 @@ public sealed class AppearanceDialog : Form
 		Value = value;
 		original = value.Copy();
 		this.preview = preview;
+        previewDelay.Tick += delegate { previewDelay.Stop(); if (!IsDisposed && pendingPreview != null) this.preview(pendingPreview.Copy()); };
 		Text = "Customize FishTank";
 		base.Width = 790;
 		base.Height = 800;
@@ -86,10 +89,16 @@ public sealed class AppearanceDialog : Form
 			BuildTabs();
 			Changed();
 		}));
-		tabs = new TabControl
+		tabs = new ThemeTabControl
 		{
-			Dock = DockStyle.Fill
+			Dock = DockStyle.Fill, DrawMode = TabDrawMode.OwnerDrawFixed
 		};
+        tabs.DrawItem += delegate(object sender, DrawItemEventArgs e) {
+            if (e.Index < 0 || e.Index >= tabs.TabCount) return;
+            var colors = Palette.From(Value);
+            using (var brush = new SolidBrush(e.Index == tabs.SelectedIndex ? colors.Surface2 : colors.Background)) e.Graphics.FillRectangle(brush, e.Bounds);
+            TextRenderer.DrawText(e.Graphics, tabs.TabPages[e.Index].Text, Font, e.Bounds, colors.Text, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
+        };
 		base.Controls.Add(tabs);
 		base.Controls.Add(flowLayoutPanel);
 		base.Controls.Add(value2);
@@ -166,11 +175,13 @@ public sealed class AppearanceDialog : Form
 		ComboBox combo = new ComboBox
 		{
 			DropDownStyle = ComboBoxStyle.DropDownList,
+            DrawMode = DrawMode.OwnerDrawFixed,
 			BackColor = Color.FromArgb(38, 47, 63),
 			ForeColor = ForeColor,
 			FlatStyle = FlatStyle.Flat
 		};
-		combo.Items.AddRange(choices);
+		combo.DrawItem += delegate(object sender, DrawItemEventArgs e) { var colors = Palette.From(Value); using (var fill = new SolidBrush((e.State & DrawItemState.Selected) != 0 ? colors.Surface2 : colors.Surface)) e.Graphics.FillRectangle(fill, e.Bounds); if (e.Index >= 0) TextRenderer.DrawText(e.Graphics, Convert.ToString(combo.Items[e.Index]), combo.Font, e.Bounds, colors.Text, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix); e.DrawFocusRectangle(); };
+        combo.Items.AddRange(choices);
 		combo.SelectedItem = selected;
 		combo.SelectedIndexChanged += delegate
 		{
@@ -203,6 +214,7 @@ public sealed class AppearanceDialog : Form
 		Label label = new Label();
 		label.Text = text;
 		label.ForeColor = Color.FromArgb(171, 188, 209);
+        label.Tag = "appearance-hint";
 		label.Dock = DockStyle.Fill;
 		label.Padding = new Padding(0, 12, 0, 0);
 		Label control = label;
@@ -494,12 +506,26 @@ public sealed class AppearanceDialog : Form
 		{
 			Value.Validate();
 			RefreshSample();
-			preview(Value);
+			pendingPreview = Value.Copy();
+            previewDelay.Stop(); previewDelay.Start();
 		}
 	}
 
+	protected override void Dispose(bool disposing) { if (disposing) previewDelay.Dispose(); base.Dispose(disposing); }
+
+	private static void ApplyColors(Control root, Palette colors)
+    {
+        root.BackColor = root is Label ? Color.Transparent : root is ComboBox || root is NumericUpDown || root is ListBox ? colors.Surface : root is Button ? colors.Surface2 : colors.Background;
+        if (root is ThemeTabControl themedTabs) { themedTabs.BorderColor = colors.Line; themedTabs.FrameBackground = colors.Background; }
+        root.ForeColor = Equals(root.Tag, "appearance-hint") ? colors.Muted : colors.Text;
+        if (root is Button button) { button.UseVisualStyleBackColor = false; button.FlatAppearance.BorderColor = colors.Line; button.FlatAppearance.MouseOverBackColor = colors.Surface; }
+        foreach (Control child in root.Controls) ApplyColors(child, colors);
+    }
+
 	private void RefreshSample()
 	{
+        ApplyColors(this, Palette.From(Value));
+        tabs.Invalidate();
 		if (sample != null)
 		{
 			Palette palette = Palette.From(Value);

@@ -36,10 +36,14 @@ public sealed class SimpleInformation : Panel
 			Dock = DockStyle.Bottom,
 			Height = 34,
 			AccessibleName = "Switch between simple explanation and full original details",
-			BackColor = SystemColors.Control,
-			ForeColor = SystemColors.ControlText
+			BackColor = background,
+            FlatStyle = FlatStyle.Flat,
+            UseVisualStyleBackColor = false,
+			ForeColor = foreground
 		};
-		Button button = toggle;
+		toggle.FlatAppearance.BorderColor = SystemInformation.HighContrast ? foreground : ControlPaint.Light(background, 0.2f);
+        toggle.FlatAppearance.MouseOverBackColor = ControlPaint.Light(background, 0.1f);
+        Button button = toggle;
 		EventHandler value = delegate
 		{
 			simple = !simple;

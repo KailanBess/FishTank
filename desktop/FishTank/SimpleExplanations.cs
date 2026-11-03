@@ -54,6 +54,20 @@ public static class SimpleExplanations
 	private static bool installed;
 
 	private static bool defaultSimple;
+    private static Palette colors = Palette.From(new Appearance());
+    internal static void ApplyTheme(Palette value)
+    {
+        colors = value;
+        foreach (var pair in new List<KeyValuePair<Form, WindowState>>(windows))
+            if (!pair.Key.IsDisposed && pair.Value.Bar != null && !pair.Value.Bar.IsDisposed) ThemeBar(pair.Value.Bar);
+    }
+    private static void ThemeBar(FlowLayoutPanel bar)
+    {
+        bar.BackColor = colors.Surface2; bar.ForeColor = colors.Text;
+        foreach (Control control in bar.Controls) { control.BackColor = colors.Surface2; control.ForeColor = colors.Text;
+            if (control is Button button) { button.FlatStyle = FlatStyle.Flat; button.UseVisualStyleBackColor = false; button.FlatAppearance.BorderColor = colors.Line; button.FlatAppearance.MouseOverBackColor = colors.Surface; }
+        }
+    }
 
 	public static bool DefaultSimple
 	{
@@ -107,7 +121,9 @@ public static class SimpleExplanations
 		if (!installed)
 		{
 			installed = true;
-			defaultSimple = AppearanceStore.Load().SimpleExplanationsByDefault;
+			var saved = AppearanceStore.Load();
+            defaultSimple = saved.SimpleExplanationsByDefault;
+            colors = Palette.From(saved);
 			Application.Idle += AttachWindows;
 		}
 	}
@@ -319,7 +335,8 @@ public static class SimpleExplanations
 			}
 		};
 		flowLayoutPanel2.Controls.Add(preference);
-		form.Controls.Add(flowLayoutPanel2);
+		ThemeBar(flowLayoutPanel2);
+        form.Controls.Add(flowLayoutPanel2);
 		flowLayoutPanel2.SendToBack();
 	}
 

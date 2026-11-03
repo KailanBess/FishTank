@@ -60,6 +60,7 @@ public sealed partial class Desktop : Form
 	private Image displayArtwork;
 
 	private Icon ownedIcon;
+    private readonly Dictionary<string, Font> appearanceFonts = new Dictionary<string, Font>();
 
 	private string appliedIconKey;
 
@@ -184,6 +185,7 @@ public sealed partial class Desktop : Form
 			scanWindow?.Dispose(); monitor.Dispose(); tips.Dispose(); artwork?.Dispose(); displayArtwork?.Dispose(); ownedIcon?.Dispose();
 		}
 		base.Dispose(disposing);
+        if (disposing) { foreach (var font in appearanceFonts.Values) font.Dispose(); appearanceFonts.Clear(); }
 	}
 
     private T BrowserUi<T>(Func<T> action)
@@ -346,7 +348,9 @@ public sealed partial class Desktop : Form
 
 	private Font Face(float size, FontStyle style)
 	{
-		return new Font(appearance.FontFamily, TextSize(size), style);
+		string key = appearance.FontFamily + ":" + TextSize(size).ToString(System.Globalization.CultureInfo.InvariantCulture) + ":" + style;
+        if (!appearanceFonts.TryGetValue(key, out var font)) { font = new Font(appearance.FontFamily, TextSize(size), style); appearanceFonts.Add(key, font); }
+        return font;
 	}
 
 	private Label Label(string text, float size, Color color)
@@ -419,7 +423,10 @@ public sealed partial class Desktop : Form
 	{
         WindowFrame.SetAppearance(appearance);
         WindowFrame.Attach(this);
+        using (var redraw = new WindowRedraw(this))
+        {
 		SuspendLayout();
+        try {
 		foreach (Control item in new List<Control>(ControlsToList(base.Controls)))
 		{
 			base.Controls.Remove(item);
@@ -516,7 +523,7 @@ public sealed partial class Desktop : Form
 		}
 		panel4.AutoScrollMinSize = new Size(0, num);
 		UpdateNavigation(panel4);
-		Label label3 = Label("WINDOWS SECURITY COMPANION\nDevelopment preview · 0.11.1", 8f, palette.Muted);
+		Label label3 = Label("WINDOWS SECURITY COMPANION\nDevelopment preview · " + typeof(Program).Assembly.GetName().Version.ToString(3), 8f, palette.Muted);
 		label3.Dock = DockStyle.Bottom;
 		label3.Height = (int)TextSize(52f);
 		label3.Visible = appearance.ShowFooter;
@@ -554,8 +561,9 @@ public sealed partial class Desktop : Form
 		base.Controls.Add(nav);
 		ApplyAppIcon();
 		RenderPage();
-		ResumeLayout(performLayout: true);
-		FitPage();
+        SimpleExplanations.Attach(this);
+        } finally { ResumeLayout(performLayout: true); FitPage(); }
+        }
 	}
 
 	private static List<Control> ControlsToList(Control.ControlCollection controls)

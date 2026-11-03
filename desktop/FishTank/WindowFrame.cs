@@ -20,6 +20,7 @@ internal static class WindowFrame
     internal static void SetAppearance(Appearance value)
     {
         current = value.Copy();
+        SimpleExplanations.ApplyTheme(Palette.From(current));
         if (!installed) { installed = true; Application.Idle += AttachOpenWindows; Application.ApplicationExit += delegate { appIcon?.Dispose(); appIcon = null; }; }
         foreach (Form form in Application.OpenForms.Cast<Form>().ToArray()) { Attach(form); Apply(form); }
     }
