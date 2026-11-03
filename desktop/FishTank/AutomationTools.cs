@@ -73,6 +73,7 @@ internal static class AutomaticBackups
     {
         lock(Gate)
         {
+            using var lease=new FileStream(Path.Combine(Core.Data,"managed-backups.lock"),FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None);
             var plan=Load();if(string.IsNullOrWhiteSpace(plan.Destination))throw new InvalidOperationException("Choose a backup destination first.");
             plan.LastAttemptUtc=DateTime.UtcNow;Save(plan);
             byte[] bytes=LocalStoreFiles.ReadOptional(PasswordSession.DefaultPath,16*1024*1024)??throw new FileNotFoundException("Create a password vault before backing it up.");

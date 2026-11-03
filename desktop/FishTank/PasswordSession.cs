@@ -410,8 +410,8 @@ public sealed class PasswordSession : IDisposable
     }
     private void CommitMutation(List<PasswordEntry> candidate)
     {
-        Persist(candidate);
         var previous=entries.Select(e=>e.Copy()).ToList();
+        Persist(candidate);
         if(undo!=null)ClearEntries(undo);
         ClearEntries(entries);undo=previous;entries=candidate;
     }

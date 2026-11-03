@@ -14,15 +14,9 @@ public static class SelfHostedMfa
 
 	public static DeliveryConfiguration Load()
 	{
-		if (!File.Exists(FilePath))
-		{
-			return null;
-		}
-		if (new FileInfo(FilePath).Length > 16384)
-		{
-			throw new IOException("Invalid delivery configuration");
-		}
-		byte[] array = ProtectedData.Unprotect(File.ReadAllBytes(FilePath), null, DataProtectionScope.CurrentUser);
+        byte[] saved=LocalStoreFiles.ReadOptional(FilePath,16384);
+        if(saved==null)return null;
+		byte[] array = ProtectedData.Unprotect(saved, null, DataProtectionScope.CurrentUser);
 		try
 		{
 			DeliveryConfiguration deliveryConfiguration = Core.Parse<DeliveryConfiguration>(Encoding.UTF8.GetString(array));

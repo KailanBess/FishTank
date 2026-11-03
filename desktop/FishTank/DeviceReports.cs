@@ -23,6 +23,7 @@ internal static class DeviceReports
     {
         lock(Gate)
         {
+            using var lease=new FileStream(Path.Combine(Core.Data,"device-signing-identity.lock"),FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None);
             var identity=ProtectedStore.Read<DeviceSigningIdentity>("device-signing-identity",()=>null);
             using(var rsa=new RSACryptoServiceProvider(3072){PersistKeyInCsp=false})
             {
