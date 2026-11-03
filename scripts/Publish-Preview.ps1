@@ -58,12 +58,19 @@ try{
  $metadata=Prepare (Join-Path $download 'FishTank-desktop-preview.zip') $output
  $source=Get-Content -LiteralPath (Join-Path $PSScriptRoot '../desktop/Properties/AssemblyInfo.cs') -Raw
  if($source -notmatch 'AssemblyVersion\("([0-9.]+)"\)' -or [Version]$Matches[1] -ne [Version]$metadata.Version){throw 'Tested artifact does not match the checked-out source version.'}
- $existing=& gh release view $metadata.Tag --repo $Repository --json isDraft,isPrerelease 2>$null
- if($LASTEXITCODE -eq 0){
-  $previous=$existing | ConvertFrom-Json
-  if($previous.isDraft){throw 'An unfinished draft already exists for this version; review it before republishing.'}
-  Write-Host "Release $($metadata.Tag) already exists. Published assets were not changed; bump the app version for another release."
-  exit 0
+ $list=& gh api "repos/$Repository/releases?per_page=100"
+ if($LASTEXITCODE -ne 0){throw 'Existing release metadata could not be checked.'}
+ $previous=@(($list | ConvertFrom-Json) | Where-Object tag_name -eq $metadata.Tag)
+ if($previous.Count -gt 1){throw 'Ambiguous existing preview release.'}
+ if($previous.Count -eq 1){
+  if(!$previous[0].draft){
+   Write-Host "Release $($metadata.Tag) already exists. Published assets were not changed; bump the app version for another release."
+   exit 0
+  }
+  # Only recreate an unpublished draft produced by this publishing job. Never alter a public release or an owner's draft.
+  if($previous[0].author.login -ne 'github-actions[bot]' -or !$previous[0].prerelease -or $previous[0].body -notlike 'Unsigned FishTank development preview*'){throw 'Existing draft is not a failed preview-publisher draft; review it manually.'}
+  & gh api --method DELETE "repos/$Repository/releases/$($previous[0].id)"
+  if($LASTEXITCODE -ne 0){throw 'Failed preview draft could not be recreated.'}
  }
  $notes=@"
 Unsigned FishTank development preview $($metadata.Version).
@@ -79,9 +86,15 @@ Stable signed updates retain their separate publisher-verification requirements.
  $assets=@($metadata.Files | ForEach-Object {Join-Path $output $_})
  & gh release create $metadata.Tag @assets --repo $Repository --target $Commit --draft --prerelease --title "FishTank $($metadata.Tag) preview" --notes-file $notesPath
  if($LASTEXITCODE -ne 0){throw 'Preview release draft creation failed.'}
+ # A draft's tag may not have a Git ref yet; retrieve it by release ID rather than /releases/tags.
+ $list=& gh api "repos/$Repository/releases?per_page=100"
+ if($LASTEXITCODE -ne 0){throw 'Created draft metadata could not be read.'}
+ $drafts=@(($list | ConvertFrom-Json) | Where-Object { $_.tag_name -eq $metadata.Tag -and $_.draft })
+ if($drafts.Count -ne 1){throw 'Created preview draft identity is ambiguous.'}
+ $releaseId=$drafts[0].id
  $ready=$false
  for($attempt=0;$attempt -lt 20;$attempt++){
-  $json=& gh api "repos/$Repository/releases/tags/$($metadata.Tag)"
+  $json=& gh api "repos/$Repository/releases/$releaseId"
   if($LASTEXITCODE -ne 0){throw 'Preview asset metadata could not be checked.'}
   $release=$json | ConvertFrom-Json;$ready=$true
   foreach($name in $metadata.Files){
@@ -94,7 +107,9 @@ Stable signed updates retain their separate publisher-verification requirements.
   if($ready){break};Start-Sleep -Seconds 3
  }
  if(!$ready){throw 'GitHub digest metadata did not become available; the release remains a draft.'}
- & gh release edit $metadata.Tag --repo $Repository --draft=false --prerelease --latest=false
+ $publishPath=Join-Path $temporary 'publish.json'
+ @{draft=$false;prerelease=$true;make_latest='false';tag_name=$metadata.Tag;target_commitish=$Commit} | ConvertTo-Json -Compress | Set-Content -LiteralPath $publishPath -Encoding UTF8
+ & gh api --method PATCH "repos/$Repository/releases/$releaseId" --input $publishPath | Out-Null
  if($LASTEXITCODE -ne 0){throw 'Preview release publication failed.'}
  Write-Host "Published $($metadata.Tag) from tested commit $Commit with checked GitHub SHA-256 digests."
 }finally{
