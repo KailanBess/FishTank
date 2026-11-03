@@ -35,4 +35,6 @@ try{
  if(!$full.StartsWith($parent,[StringComparison]::OrdinalIgnoreCase) -or [IO.Path]::GetFileName($full) -notmatch '^FishTank-preview-test-[0-9a-f]{32}$'){throw 'Refusing cleanup outside the generated release-test directory.'}
  Remove-Item -LiteralPath $full -Recurse -Force
 }
+& (Join-Path $PSScriptRoot 'Test-PreviewPublisher.ps1') -Archive $Archive
+if($LASTEXITCODE -ne 0){throw 'Preview publisher fixture checks failed.'}
 exit 0
