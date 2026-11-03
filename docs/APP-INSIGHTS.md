@@ -27,3 +27,11 @@ The 38-second recording was reviewed at half-second intervals. Around 19–25 se
 Explanation controls now use the app palette. Customize's controls, tab strip and choice lists track the preview palette instead of mixing default bright controls with a dark body. The footer displays the assembly version rather than a fixed old version. Native OS scrollbars and common file/color dialogs retain Windows behavior.
 
 Windows UI checks exercise eight successive theme/font/text-size changes with Customize open, verify latest-preview completion and modal ownership, compare inherited icon pixels, confirm exclusive frame choices, and verify Cancel restores app/frame state without saving. Four main-window preview captures and a Customize capture are included in the CI screenshot artifact. Automated render checks do not establish identical GPU/Game Bar capture behavior on every PC.
+
+## Barrel direction and GitHub updates (0.15.3)
+
+Mascot bubbles start at the barrel opening within the displayed image rectangle, including Zoom letterboxing and padding. Each bubble launches rightward along the barrel, then curves upward; randomness varies speed/size without choosing a backward direction. Counts, visibility, reduced-motion behavior and the screen-wide overlay remain bounded as before.
+
+Open **Settings → GitHub updates** (also searchable in All tools). The dedicated screen shows the installed version, channel, publisher-trust readiness and staged version. **Check GitHub release** contacts GitHub only after being clicked; **Download and verify** stages both executables; **Apply update** separately confirms replacement/restart and repeats digest, signature, publisher and newer-version checks. Applying is disabled without a complete staged update and configured publisher trust. Publisher trust settings, release channel, the release page and previous installation result are available on the same screen.
+
+Source commits and preview ZIPs are not published releases. At validation time the public repository had no releases. Unsigned preview executables cannot pass the trusted-update gate; use the downloadable ZIP until signed releases and publisher trust are configured. No existing update verification was relaxed.

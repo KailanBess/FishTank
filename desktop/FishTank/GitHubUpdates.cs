@@ -100,7 +100,7 @@ public static class GitHubUpdates
             }
             AppActivity.Record("Updates", "GitHub release executables verified and staged; not installed.");
             ProtectedStore.Write("pending-github-update", new PendingGitHubUpdate { ReleaseId = release.id, Version = version, Files = staged.ToArray() });
-            return "Both GitHub release executables passed checksum, publisher and version verification for " + version + ". They are staged; use Install verified GitHub update to close FishTank, replace only its executables, keep rollback copies and restart. User data is not replaced.";
+            return "Both GitHub release executables passed checksum, publisher and version verification for " + version + ". They are staged; use Settings → GitHub updates → Apply update to close FishTank, replace only its executables, keep rollback copies and restart. User data is not replaced.";
         }
     }
     internal static PendingGitHubUpdate Pending() => ProtectedStore.Read<PendingGitHubUpdate>("pending-github-update", () => null);

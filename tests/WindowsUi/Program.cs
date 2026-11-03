@@ -38,6 +38,11 @@ internal static class Program
                 var overlay = (Form)typeof(BubbleTank).GetField("overlay", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(tank);
                 Check(overlay.Bounds == Screen.FromControl(tank).Bounds, "Bubbles remain clipped to tank or parent");
                 Check(overlay.Owner == host && !overlay.ShowInTaskbar, "Bubble overlay ownership is incorrect");
+                var particles = (System.Collections.IEnumerable)overlay.GetType().GetField("bubbles", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(overlay);
+                bool forward = true;
+                foreach (var particle in particles) { var kind = particle.GetType(); float vx = (float)kind.GetField("VX").GetValue(particle), vy = (float)kind.GetField("VY").GetValue(particle); forward &= vx > 0 && vy < 0 && Math.Abs(vy) < vx / 4; }
+                Check(forward, "Bubble launches backward or upward instead of along the barrel");
+                using (var portrait = new Bitmap(100, 200)) { tank.Image = portrait; tank.SizeMode = PictureBoxSizeMode.Zoom; Point muzzle = tank.BarrelPoint(); Check(Math.Abs(muzzle.X - 52) <= 1 && Math.Abs(muzzle.Y - 31) <= 1, "Muzzle origin ignored zoom letterboxing"); tank.Image = null; }
                 for (int tick = 0; tick < 45; tick++) tank.Advance();
                 Check(tank.BubbleCount > 0, "Bubbles disappeared before reaching the screen top");
                 for (int tick = 0; tick < 1500; tick++) tank.Advance();

@@ -15,7 +15,7 @@ internal static class InsightsUiChecks
         using (var owner = new Desktop())
         {
             owner.StartPosition = FormStartPosition.Manual; owner.Location = new Point(-30000, -30000); owner.ShowInTaskbar = false; owner.Show();
-            foreach (string method in new[] { "OpenRansomwareCenter", "OpenAsrCenter", "OpenApplicationControl", "OpenHardwareSecurity", "OpenSoftwareInventory", "OpenPersistenceMonitor", "OpenExposureMonitor", "OpenIncidentWorkspace", "OpenCfaPreview", "OpenAsrPreview", "OpenSecurityChanges", "OpenStorageCleanup", "OpenPortableTransfer", "OpenWhatsNew", "OpenServerWizard", "OpenToolsHub", "OpenNotificationCenter", "OpenQueueCenter", "OpenBackupCenter", "OpenPrivacyCenter", "OpenProfilesAndLayouts", "OpenOfflineHelp", "OpenWindowsIntegration", "OpenDeviceCenter", "OpenPasskeyCenter", "OpenUpdateChannel", "OpenScanSchedule", "OpenFolderReminders", "OpenSettingsSearch", "OpenSupportReport", "OpenActivityTimeline", "OpenInitialSetup", "OpenRecoveryCenter", "OpenAccessibilityHelp", "OpenReleaseReadiness", "OpenAccessSettings", "OpenBrowserControls", "OpenMoreTools" })
+            foreach (string method in new[] { "OpenRansomwareCenter", "OpenAsrCenter", "OpenApplicationControl", "OpenHardwareSecurity", "OpenSoftwareInventory", "OpenPersistenceMonitor", "OpenExposureMonitor", "OpenIncidentWorkspace", "OpenCfaPreview", "OpenAsrPreview", "OpenSecurityChanges", "OpenStorageCleanup", "OpenPortableTransfer", "OpenWhatsNew", "OpenServerWizard", "OpenToolsHub", "OpenNotificationCenter", "OpenQueueCenter", "OpenBackupCenter", "OpenPrivacyCenter", "OpenProfilesAndLayouts", "OpenOfflineHelp", "OpenWindowsIntegration", "OpenDeviceCenter", "OpenPasskeyCenter", "OpenGitHubUpdates", "OpenUpdateChannel", "OpenScanSchedule", "OpenFolderReminders", "OpenSettingsSearch", "OpenSupportReport", "OpenActivityTimeline", "OpenInitialSetup", "OpenRecoveryCenter", "OpenAccessibilityHelp", "OpenReleaseReadiness", "OpenAccessSettings", "OpenBrowserControls", "OpenMoreTools" })
             {
                 Exception failure = null; bool visited = false;
                 using (var timer = new Timer { Interval = 250 })
@@ -46,6 +46,11 @@ internal static class InsightsUiChecks
                                     using (var bitmap = new Bitmap(dialog.Width, dialog.Height)) { dialog.DrawToBitmap(bitmap, new Rectangle(Point.Empty, dialog.Size)); bitmap.Save(Path.Combine(output, "ServerWizard-step" + step + ".png")); }
                                 }
                                 steps.SelectedIndex = 0;
+                            }
+                            if (method == "OpenGitHubUpdates") {
+                                check(controls.OfType<Button>().Any(x => x.Text == "Check GitHub release"), "GitHub release checking is not discoverable");
+                                check(!controls.OfType<Button>().Single(x => x.Text == "Apply update").Enabled, "Apply enabled without a verified update");
+                                check(controls.OfType<TextBox>().Single(x => x.AccessibleName == "GitHub update result").Text.StartsWith("Choose Check"), "Opening updates silently contacted GitHub");
                             }
                             if (method == "OpenScanSchedule") check(!controls.OfType<CheckBox>().Single(x => x.Text == "Enable scheduled Defender scans").Checked, "Automatic scanning defaults on");
                             if (method == "OpenSupportReport")

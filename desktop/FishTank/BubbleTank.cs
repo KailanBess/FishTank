@@ -45,9 +45,24 @@ public sealed class BubbleTank : PictureBox
 	{
 		if (ReducedMotion || !Visible || FindForm() == null) return;
 		if (overlay == null || overlay.IsDisposed) overlay = new BubbleOverlay(() => !ReducedMotion && Visible && !IsDisposed);
-		Point origin = PointToScreen(new Point((int)(Width * 0.88f), (int)(Height * 0.48f)));
+		Point origin = PointToScreen(BarrelPoint());
 		overlay.Shoot(FindForm(), origin, BubbleColor);
 	}
+
+    internal Point BarrelPoint()
+    {
+        var area = new RectangleF(Padding.Left, Padding.Top, Math.Max(1, ClientSize.Width - Padding.Horizontal), Math.Max(1, ClientSize.Height - Padding.Vertical));
+        if (Image != null) {
+            if (SizeMode == PictureBoxSizeMode.Zoom) {
+                float scale = Math.Min(area.Width / Image.Width, area.Height / Image.Height);
+                float width = Image.Width * scale, height = Image.Height * scale;
+                area = new RectangleF(area.X + (area.Width - width) / 2, area.Y + (area.Height - height) / 2, width, height);
+            } else if (SizeMode == PictureBoxSizeMode.CenterImage) area = new RectangleF(area.X + (area.Width - Image.Width) / 2, area.Y + (area.Height - Image.Height) / 2, Image.Width, Image.Height);
+            else if (SizeMode != PictureBoxSizeMode.StretchImage) area = new RectangleF(area.Location, Image.Size);
+        }
+        // Opening of the right-facing barrel in the original artwork, including its transparent padding.
+        return Point.Round(new PointF(area.X + area.Width * 0.925f, area.Y + area.Height * 0.48f));
+    }
 
 	public void Advance()
 	{

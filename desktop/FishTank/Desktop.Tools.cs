@@ -35,7 +35,7 @@ public sealed partial class Desktop
             case "demo":OpenDemo();break;case "notes":OpenWhatsNew();break;case "server":OpenServerWizard();break;
             case "search":OpenToolsHub();break;case "notices":OpenNotificationCenter();break;case "backups":OpenBackupCenter();break;case "queue":OpenQueueCenter();break;
             case "vault":Navigate("Password Manager");break;case "profiles":OpenProfilesAndLayouts();break;case "devices":OpenDeviceCenter();break;case "passkeys":OpenPasskeyCenter();break;
-            case "privacy":OpenPrivacyCenter();break;case "recovery":OpenRecoveryCenter();break;case "help":OpenOfflineHelp();break;case "updates":OpenUpdateChannel();break;
+            case "privacy":OpenPrivacyCenter();break;case "recovery":OpenRecoveryCenter();break;case "help":OpenOfflineHelp();break;case "updates":OpenGitHubUpdates();break;
             case "integrations":OpenWindowsIntegration();break;case "accessibility":OpenAccessibilityHelp();break;case "activity":OpenActivityTimeline();break;case "support":OpenSupportReport();break;
             default:throw new ArgumentException("Unknown tool.");
         }

@@ -82,7 +82,7 @@ public sealed class SecurityToolsDialog : Form
         Explain(downloads, "GitHub updates: only public stable releases from KailanBess/FishTank. Checking and downloading require consent; installation is a separate confirmed action. Signed desktop and CLI assets are required. Your data and existing runtime configuration are preserved.");
         Add(downloads, "Check GitHub for updates", () => { if (Confirm("Contact GitHub's API to check KailanBess/FishTank public stable releases? GitHub can see your IP address; no app credentials are sent.")) Run(GitHubUpdates.Check); });
         Add(downloads, "Download and verify GitHub update", () => { if (Confirm("Download both release executables from GitHub and verify their digests, publisher pin and versions? No installation occurs in this step.")) Run(GitHubUpdates.DownloadAndStage); });
-        Add(downloads, "Install verified GitHub update", () => {
+        Add(downloads, "Apply verified GitHub update", () => {
             if (Confirm("Close FishTank, reverify and install both staged GitHub executables, retain rollback copies, and restart? Finish open work first. Your private data is not replaced. Installation needs write access to the app folder; no administrator elevation is requested automatically.")) Authorize(GitHubUpdateInstaller.Start);
         });
         Add(downloads, "Last GitHub installation result", () => SetReport(GitHubUpdateInstaller.LastResult()));

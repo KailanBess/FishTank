@@ -55,11 +55,11 @@ internal sealed class BubbleOverlay : Form
         {
             bubbles.Add(new Bubble
             {
-                X = origin.X - Left + Between(-9, 9),
-                Y = origin.Y - Top + Between(-7, 7),
-                VX = (random.Next(2) == 0 ? -1 : 1) * Between(1.4f, 3.2f), VY = Between(-3.8f, -1.8f),
+                X = origin.X - Left + Between(0, 2),
+                Y = origin.Y - Top + Between(-1.5f, 1.5f),
+                VX = Between(4.8f, 6.8f), VY = Between(-0.7f, -0.15f),
                 Radius = Between(2.5f, 5), Phase = Between(0, (float)Math.PI * 2),
-                Sway = Between(0.25f, 0.8f), Color = color
+                Sway = Between(0.1f, 0.35f), Color = color
             });
         }
         if (!Visible) Show(owner);
@@ -78,10 +78,10 @@ internal sealed class BubbleOverlay : Form
         {
             var bubble = bubbles[i];
             bubble.Phase += 0.08f;
-            bubble.X += bubble.VX + (float)Math.Sin(bubble.Phase) * bubble.Sway;
+            bubble.X += Math.Max(0, bubble.VX + (float)Math.Sin(bubble.Phase) * bubble.Sway);
             bubble.Y += bubble.VY;
             bubble.VX *= 0.985f;
-            bubble.VY = Math.Max(-5.5f, bubble.VY - 0.015f);
+            bubble.VY = Math.Max(-5.5f, bubble.VY - 0.07f);
             // Keep the entire circle visible at the sides until it passes the screen top.
             bubble.X = Math.Max(bubble.Radius + 3, Math.Min(Width - bubble.Radius - 3, bubble.X));
             if (bubble.Y + bubble.Radius + 3 < 0) bubbles.RemoveAt(i);

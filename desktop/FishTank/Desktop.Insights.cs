@@ -100,6 +100,8 @@ public sealed partial class Desktop
         ActionRow(Button("All tools · Ctrl+K", OpenToolsHub, true), Button("Search settings", OpenSettingsSearch, false));
         InsightNote("Appearance and app access", "Choose readable colors and text, or manage your app password, authenticator and locking preferences.");
         ActionRow(Button("Appearance & accessibility", Customize, false), Button("App access & MFA", OpenAccessSettings, false), Button("Locking & notifications", () => OpenToolsTab("Locking and reminders"), false));
+        InsightNote("FishTank updates", "Installed version " + typeof(Program).Assembly.GetName().Version + ". Check published GitHub releases, verify downloads and apply a trusted update.");
+        ActionRow(Button("GitHub updates", OpenGitHubUpdates, true));
         InsightNote("Automation and connections", "Choose scheduled scans, track backup reminders, or manage the local browser dashboard.");
         ActionRow(Button("Scan scheduling", OpenScanSchedule, false), Button("Backup reminders", OpenFolderReminders, false), Button("Browser dashboard", OpenBrowserControls, false));
         ActionRow(Button("More tools", OpenMoreTools, false), Button("Recovery center", OpenRecoveryCenter, false));

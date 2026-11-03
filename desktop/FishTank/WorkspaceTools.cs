@@ -66,7 +66,7 @@ internal static class ToolCatalog
         new ToolDefinition("privacy","Privacy and history","permissions retention selective deletion diagnostics preview"),
         new ToolDefinition("recovery","Recovery center","restore preview compare backup recovery usb"),
         new ToolDefinition("help","Offline help and troubleshooting","search guides bug report diagnostics"),
-        new ToolDefinition("updates","Updates and distribution","signed installer version channels staged rollback"),
+        new ToolDefinition("updates","GitHub updates","apply release download verify install signed installer version channels staged rollback"),
         new ToolDefinition("integrations","Windows integration","right click scan shell menu uninstall"),
         new ToolDefinition("accessibility","Accessibility","keyboard shortcuts screen reader large controls focus"),
         new ToolDefinition("activity","Activity timeline","scans detections quarantine backups updates"),
