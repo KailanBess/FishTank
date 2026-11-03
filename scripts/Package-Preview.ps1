@@ -58,7 +58,7 @@ Dashboard adds attention items and clear protection status. Antivirus adds optio
 Simple view is the default. Advanced view adds evidence and controls without changing protection.
 
 This is not an audited or production-approved security release. Automated Windows runtime and UI checks are recorded in the validation guides; independent security review and physical-device acceptance remain necessary. See LIVE-VALIDATION.md for live-checking tests and their limits.
-The executables are unsigned. Settings > GitHub updates offers opt-in preview updates without a certificate; see PREVIEW-UPDATES.md. These builds cannot pass the separate signed-update gate. GitHub updates have a separate confirmed installer; only signed, pinned, newer releases can be installed. A publisher certificate, GitHub release secrets, signed assets and an independent security audit remain external requirements.
+The executables are unsigned. Settings > GitHub updates offers opt-in preview updates without a certificate; see PREVIEW-UPDATES.md. These builds cannot pass the separate signed-update gate. All updates use a separate confirmed installer and newer-version/digest checks. Optional unsigned preview updates need no certificate or signing secrets. Stable signed updates additionally require a configured publisher certificate pin and valid signatures. Independent security review remains an external requirement.
 
 No private configuration, passwords, device tokens or databases are included.
 "@ | Set-Content -LiteralPath (Join-Path $temporary 'README.txt') -Encoding UTF8

@@ -2,7 +2,7 @@
 
 No signing certificate, password, GitHub login or private key is needed by users.
 
-1. Install/extract version 0.15.4 once. Older builds cannot install the new unsigned preview format through their signed-only updater.
+1. Install/extract version 0.15.4 or later once. Older builds cannot install the new unsigned preview format through their signed-only updater.
 2. Open **Settings → GitHub updates → Use preview updates (no certificate)** and accept the unsigned-preview notice once for this profile.
 3. Use **Check GitHub release**, **Download and verify**, then **Apply update** when a newer release is available. Apply is a separate confirmation and restarts FishTank after replacement.
 
