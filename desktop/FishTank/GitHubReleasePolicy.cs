@@ -30,9 +30,9 @@ public static class GitHubReleasePolicy
             throw new ArgumentException("GitHub release tag must be a stable vMajor.Minor.Build.Revision version.");
         return new System.Version(version.Major, version.Minor, Math.Max(0, version.Build), Math.Max(0, version.Revision)).ToString();
     }
-    public static GitHubAsset Asset(GitHubRelease release, string name)
+    public static GitHubAsset Asset(GitHubRelease release, string name, bool allowPreview = false)
     {
-        if (release == null || release.id <= 0 || release.draft || release.prerelease || release.assets == null || release.assets.Length > 100)
+        if (release == null || release.id <= 0 || release.draft || (release.prerelease && !allowPreview) || release.assets == null || release.assets.Length > 100)
             throw new ArgumentException("No supported public stable GitHub release was returned.");
         Version(release.tag_name);
         if (name != "FishTank.exe" && name != "FishTank.Cli.exe") throw new ArgumentException("Unsupported update component.");

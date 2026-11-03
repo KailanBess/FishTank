@@ -11,6 +11,12 @@ $temporary=Join-Path ([IO.Path]::GetTempPath()) ('FishTank-package-'+[Guid]::New
 New-Item -ItemType Directory -Path $temporary | Out-Null
 try{
  $files=@(
+  'scripts/Install-FishTank.ps1',
+  'scripts/Uninstall-FishTank.ps1',
+  'docs/EXPANSION-DESIGN.md',
+  'docs/APP-EXPANSION.md',
+  'docs/SERVER-EXPANSION.md',
+  'packages/FishTank-sbom.json',
   'desktop/bin/Release/net48/FishTank.exe',
   'desktop/bin/Release/net48/FishTank.exe.config',
   'desktop/bin/Release/cli/net48/FishTank.Cli.exe',

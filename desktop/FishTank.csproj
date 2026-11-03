@@ -13,6 +13,8 @@
   </PropertyGroup>
   <PropertyGroup>
     <LangVersion>12.0</LangVersion>
+    <Deterministic>true</Deterministic>
+    <PathMap>$(MSBuildProjectDirectory)/..=/_/FishTank</PathMap>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup>

@@ -97,7 +97,7 @@ public sealed partial class Desktop
 
     private void AddAppSettings()
     {
-        ActionRow(Button("Search settings", OpenSettingsSearch, true));
+        ActionRow(Button("All tools · Ctrl+K", OpenToolsHub, true), Button("Search settings", OpenSettingsSearch, false));
         InsightNote("Appearance and app access", "Choose readable colors and text, or manage your app password, authenticator and locking preferences.");
         ActionRow(Button("Appearance & accessibility", Customize, false), Button("App access & MFA", OpenAccessSettings, false), Button("Locking & notifications", () => OpenToolsTab("Locking and reminders"), false));
         InsightNote("Automation and connections", "Choose scheduled scans, track backup reminders, or manage the local browser dashboard.");

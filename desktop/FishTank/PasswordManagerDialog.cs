@@ -8,7 +8,7 @@ using Microsoft.Win32;
 
 namespace FishTank;
 
-public sealed class PasswordManagerDialog : Form
+public sealed partial class PasswordManagerDialog : Form
 {
 	private PasswordSession session;
 
@@ -92,6 +92,9 @@ public sealed class PasswordManagerDialog : Form
 		Add("Delete selected", DeleteSelected);
 		Add("Generate password", Generate);
 		Add("Encrypted backup", Backup);
+        Add("History, expiry and attachments", EntryExtras);
+        Add("Import and export", TransferEntries);
+        Add("Undo last change", () => { NeedUnlock(); session.UndoLastMutation(); RefreshEntries(); });
 		Add("Restore backup", delegate
 		{
 			Restore();
@@ -349,6 +352,7 @@ public sealed class PasswordManagerDialog : Form
 					text2 = "No length/reuse flag (not a breach check)";
 				}
 				if (e.UsesLinkedSignIn) text2 = "Linked sign-in · no separate password";
+                if (DateTime.TryParse(e.ExpiresUtc, out var expiry) && expiry.ToUniversalTime() <= DateTime.UtcNow.AddDays(14)) text2 += expiry.ToUniversalTime() <= DateTime.UtcNow ? " · EXPIRED" : " · expires soon";
                 int index = list.Rows.Add((e.LinkedEmailId == "" ? "" : "↳ ") + e.Title, e.Kind, PasswordOrganization.EmailFor(e, entries), e.Username, e.Website, text2);
 				list.Rows[index].Tag = e.Id;
 			}

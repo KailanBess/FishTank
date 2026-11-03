@@ -112,6 +112,11 @@ public sealed class AppUnlockDialog : Form
 			}
 		};
 		flowLayoutPanel.Controls.Add(delivery);
+        var passkey = new Button { Text = "Passkey…", AutoSize = true, Height = 36 };
+        passkey.Click += delegate { if (working) return; using (var prompt = new PasskeyDialog(password.Text, "signin")) if (prompt.ShowDialog(this) == DialogResult.OK) factor.Text = prompt.FactorValue; };
+        flowLayoutPanel.Controls.Add(passkey);
+        flowLayoutPanel.Height = 85;
+        Height += 45;
 		flowLayoutPanel.Controls.Add(unlock);
 		flowLayoutPanel.Controls.Add(value3);
 		base.Controls.Add(factor);

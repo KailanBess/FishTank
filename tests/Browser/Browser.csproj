@@ -6,6 +6,8 @@
     <Compile Include="../../desktop/FishTank/LocalBrowserServer.cs" Link="LocalBrowserServer.cs" />
     <Compile Include="../../desktop/FishTank/BrowserBackend.cs" Link="BrowserBackend.cs" />
     <Compile Include="../../desktop/FishTank/PasswordEntry.cs" Link="PasswordEntry.cs" />
+    <Compile Include="../../desktop/FishTank/VaultExtensions.cs" Link="VaultExtensions.cs" />
+    <Compile Include="../../desktop/FishTank/FileSafe.cs" Link="FileSafe.cs" />
     <Compile Include="../../desktop/FishTank/PasswordPayload.cs" Link="PasswordPayload.cs" />
     <Compile Include="../../desktop/FishTank/PasswordSession.cs" Link="PasswordSession.cs" />
     <Compile Include="../../desktop/FishTank/PasswordOrganization.cs" Link="PasswordOrganization.cs" />

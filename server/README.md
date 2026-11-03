@@ -1,5 +1,7 @@
 # FishTank verification server for Debian 13
 
+See [SERVER-EXPANSION.md](../docs/SERVER-EXPANSION.md) for passkeys, signed device status and the initial installer. These extensions are prepared but not deployed. Install dependencies from requirements.lock for the tested versions.
+
 This is a real, tested backend foundation for hosting your own email/SMS code verification. It needs no graphical desktop. **It is not deployed.** FishTank 0.6 includes the desktop connection and destination-enrollment UI. SMTP/SMS live delivery and HTTPS deployment remain pending. No codes are printed or simulated in normal operation.
 
 The server generates eight-digit cryptographic codes, expires them after five minutes, accepts each once, limits checking to five attempts, and binds every challenge to its device, delivery channel, purpose and destination revision. Resends invalidate the old channel challenge. Delivery is limited to once per minute and five times per hour per device, including failed deliveries. Provider-wide quotas and reverse-proxy abuse controls are still required before internet exposure.
@@ -18,7 +20,7 @@ sudo install -d -m 700 -o fishtank-mfa -g fishtank-mfa /var/lib/fishtank-mfa
 sudo install -d -m 700 /etc/fishtank-mfa
 cd /opt/fishtank-mfa
 sudo python3 -m venv venv
-sudo venv/bin/pip install -r requirements.txt
+sudo venv/bin/pip install -r requirements.lock
 sudo install -m 600 environment.example /etc/fishtank-mfa/environment
 ```
 
@@ -58,4 +60,3 @@ Run `python3 -m unittest -v test_server.py`. Tests use in-memory delivery captur
 SQLite stores destination contact information; protect the service account, database, pepper, SMTP credentials and SMS gateway token. Codes are HMAC-SHA-256 digests bound to their challenge; database theft alone does not expose the code without the pepper. Device bearer-token theft permits sending to that device's fixed destinations and attempting verification, so client storage and revocation matter. No per-IP limiter, hardware attestation, independent audit, horizontal scaling, encrypted contact database or delivery receipt guarantee is claimed. SMTP/gateway acceptance is not proof a person received a message.
 
 Reference: [Python SMTP TLS](https://docs.python.org/3.12/library/smtplib.html), [Waitress deployment](https://docs.pylonsproject.org/projects/waitress/en/stable/usage.html).
-

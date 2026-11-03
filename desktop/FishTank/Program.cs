@@ -24,6 +24,13 @@ public static class Program
 				Array.Copy(args, 1, array, 0, array.Length);
 				args = array;
 			}
+			if (args.Length >= 2 && args[0] == "--profile")
+			{
+				Core.Data = ProfilePaths.Resolve(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FishTank"), args[1]);
+				var remaining = new string[args.Length - 2]; Array.Copy(args, 2, remaining, 0, remaining.Length); args = remaining;
+			}
+			string scanFile = null;
+			if (args.Length == 2 && args[0] == "--scan-file") { scanFile = ScanPaths.Normalize(args[1]); ScanPaths.RefuseReparseAncestors(scanFile); args = new string[0]; }
 			Core.Init();
 			if (args.Length == 0)
 			{
@@ -38,6 +45,7 @@ public static class Program
 						return 1;
 					}
 					using Desktop desktop = new Desktop();
+					if (scanFile != null) { string target = scanFile; desktop.Shown += delegate { desktop.OfferShellScan(target); }; scanFile = null; }
 					Application.Run(desktop);
 					returnToSignIn = desktop.ReturnToSignIn;
 				}

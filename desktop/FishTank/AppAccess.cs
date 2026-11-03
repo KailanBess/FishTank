@@ -227,6 +227,7 @@ public static class AppAccess
 			if (accessRecord == null)
 			{
 				SessionUnlocked = true;
+				try { AuthenticationHistory.Record(true, forceMfa ? "Security settings verification" : "App sign-in"); } catch { }
 				return true;
 			}
 			if (utcNow.Ticks < accessRecord.BlockedUntilUtcTicks)
@@ -268,7 +269,7 @@ public static class AppAccess
 				{
 					accessRecord.RecoveryHashes = accessRecord.RecoveryHashes.Where((string hash, int num2) => num2 != index).ToArray();
 				}
-				else if (!(factor ?? "").StartsWith("delivery:") || !SelfHostedMfa.VerifyFactor(factor, forceMfa))
+				else if (!((factor ?? "").StartsWith("delivery:") ? SelfHostedMfa.VerifyFactor(factor, forceMfa) : ServerPasskeys.Consume(factor, forceMfa)))
 				{
 					flag2 = false;
 					accessRecord.MfaFailures = Math.Min(1000, accessRecord.MfaFailures + 1);
@@ -287,6 +288,7 @@ public static class AppAccess
 				Write(accessRecord);
 				verifiedCredential = Identity(accessRecord);
 				SessionUnlocked = true;
+                try { AuthenticationHistory.Record(true, forceMfa ? "Security settings verification" : "App sign-in"); } catch { }
 				return true;
 			}
 			verifiedCredential = null;
@@ -294,6 +296,7 @@ public static class AppAccess
 			accessRecord.Failures = Math.Min(1000, accessRecord.Failures + 1);
 			accessRecord.BlockedUntilUtcTicks = ((accessRecord.Failures < 3) ? 0 : utcNow.AddSeconds(Math.Min(300.0, 5.0 * Math.Pow(2.0, Math.Min(6, accessRecord.Failures - 3)))).Ticks);
 			Write(accessRecord);
+			try { AuthenticationHistory.Record(false, forceMfa ? "Security settings verification" : "App sign-in"); } catch { }
 			return false;
 		}
 	}

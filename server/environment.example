@@ -1,4 +1,6 @@
 FISHTANK_DATABASE=/var/lib/fishtank-mfa/service.sqlite3
+# Optional passkeys: exact public HTTPS origin, no path. Keep stable after enrollment.
+# FISHTANK_ORIGIN=https://fishyserver.tail781f78.ts.net
 FISHTANK_PEPPER=REPLACE_WITH_AT_LEAST_32_RANDOM_CHARACTERS
 SMTP_HOST=smtp.example.com
 SMTP_PORT=587

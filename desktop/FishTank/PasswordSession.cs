@@ -22,6 +22,7 @@ public sealed class PasswordSession : IDisposable
 	private byte[] expected;
 
 	private List<PasswordEntry> entries;
+    private List<PasswordEntry> undo;
 
 	private string path;
 
@@ -196,7 +197,7 @@ public sealed class PasswordSession : IDisposable
 
 	private static void ValidatePayload(PasswordPayload payload)
 	{
-		if (payload == null || (payload.Version != 1 && payload.Version != 2) || payload.Entries == null || payload.Entries.Count > 2000)
+		if (payload == null || (payload.Version != 1 && payload.Version != 2 && payload.Version != 3) || payload.Entries == null || payload.Entries.Count > 2000)
 		{
 			throw new InvalidDataException("Invalid vault payload.");
 		}
@@ -324,6 +325,8 @@ public sealed class PasswordSession : IDisposable
 
 	private static void AtomicWrite(string path, byte[] data, bool create)
 	{
+        var drive = new DriveInfo(Path.GetPathRoot(Path.GetFullPath(path)));
+        if (!drive.IsReady || drive.AvailableFreeSpace < data.Length + 16L * 1024 * 1024) throw new IOException("Insufficient destination space; the original vault was preserved.");
 		string sourceFileName = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
 		try
 		{
@@ -364,10 +367,14 @@ public sealed class PasswordSession : IDisposable
 		}
 		else
 		{
+			passwordEntry.Attachments = entries[num].Attachments.Select(x => Core.Parse<VaultAttachment>(Core.Json(x))).ToList();
+            passwordEntry.History = entries[num].History.Select(x => Core.Parse<PasswordRevision>(Core.Json(x))).ToList();
+            if (passwordEntry.Password != entries[num].Password && entries[num].Password != "")
+                passwordEntry.History = new[] { new PasswordRevision { Password = entries[num].Password, ChangedUtc = DateTime.UtcNow.ToString("o") } }.Concat(passwordEntry.History).Take(5).ToList();
+            if (passwordEntry.ExpiresUtc == null) passwordEntry.ExpiresUtc = entries[num].ExpiresUtc;
 			list[num] = passwordEntry;
 		}
-		Persist(list);
-		entries = list;
+        CommitMutation(list);
 	}
 
 	public void Delete(string id)
@@ -382,9 +389,32 @@ public sealed class PasswordSession : IDisposable
 		{
 			throw new ArgumentException("Entry not found");
 		}
-		Persist(list);
-		entries = list;
+        CommitMutation(list);
 	}
+
+    public bool CanUndo => IsUnlocked && undo != null;
+    public void UndoLastMutation() { Touch(); if (undo == null) throw new InvalidOperationException("Nothing to undo in this unlocked session."); var candidate = undo; Persist(candidate); ClearEntries(entries); undo = null; entries = candidate; }
+    public void ImportEntries(System.Collections.Generic.IList<PasswordEntry> imported)
+    {
+        Touch(); var added = imported.Select(e => e.Copy()).ToList();
+        var ids = added.ToDictionary(e => e.Id, e => Guid.NewGuid().ToString("N"));
+        foreach (var e in added) { string old = e.Id; e.Id = ids[old]; if (e.LinkedEmailId != "") e.LinkedEmailId = ids[e.LinkedEmailId]; }
+        var candidate = entries.Select(e => e.Copy()).Concat(added).ToList(); ValidatePayload(new PasswordPayload { Entries = candidate });
+        CommitMutation(candidate);
+    }
+    public void SetAttachments(string id, System.Collections.Generic.List<VaultAttachment> attachments)
+    {
+        Touch(); var candidate = entries.Select(e => e.Copy()).ToList();
+        candidate.Single(e => e.Id == id).Attachments = attachments.Select(a => Core.Parse<VaultAttachment>(Core.Json(a))).ToList();
+        ValidatePayload(new PasswordPayload { Entries = candidate }); CommitMutation(candidate);
+    }
+    private void CommitMutation(List<PasswordEntry> candidate)
+    {
+        Persist(candidate);
+        var previous=entries.Select(e=>e.Copy()).ToList();
+        if(undo!=null)ClearEntries(undo);
+        ClearEntries(entries);undo=previous;entries=candidate;
+    }
 
 	public void ExportEncrypted(string destination)
 	{
@@ -437,6 +467,7 @@ public sealed class PasswordSession : IDisposable
 
 	public void Dispose()
 	{
+        if (undo != null) { ClearEntries(undo); undo = null; }
 		if (keys != null)
 		{
 			Array.Clear(keys, 0, keys.Length);
@@ -456,6 +487,10 @@ public sealed class PasswordSession : IDisposable
 		{
 			foreach (PasswordEntry entry in entries)
 			{
+                foreach (var revision in entry.History) revision.Password = "";
+                entry.History.Clear();
+                foreach (var attachment in entry.Attachments) attachment.Content = "";
+                entry.Attachments.Clear();
 				entry.Password = "";
 				entry.Username = "";
 				entry.Notes = "";
@@ -466,4 +501,9 @@ public sealed class PasswordSession : IDisposable
 		}
 		entries = null;
 	}
+    private static void ClearEntries(List<PasswordEntry> items)
+    {
+        foreach (var entry in items) { entry.Password = entry.Username = entry.Email = entry.Notes = ""; foreach (var h in entry.History) h.Password = ""; foreach (var a in entry.Attachments) a.Content = ""; entry.History.Clear(); entry.Attachments.Clear(); }
+        items.Clear();
+    }
 }

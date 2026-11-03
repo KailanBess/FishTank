@@ -21,6 +21,15 @@ foreach($relative in $files){
  Copy-Item -LiteralPath ($file+'.config') -Destination $stage
 }
 Copy-Item -LiteralPath (Join-Path $root 'packages/PublisherCertificateSha256.txt') -Destination $stage
+foreach($name in @('Install-FishTank.ps1','Uninstall-FishTank.ps1')){
+ $file=Join-Path $PSScriptRoot $name
+ $signature=Get-AuthenticodeSignature -LiteralPath $file
+ if($signature.Status -ne 'Valid' -or !$signature.TimeStamperCertificate){throw 'Installer scripts must be signed and timestamped before packaging.'}
+ $sha=[Security.Cryptography.SHA256]::Create()
+ try{$actual=([BitConverter]::ToString($sha.ComputeHash($signature.SignerCertificate.RawData))).Replace('-','')}finally{$sha.Dispose()}
+ if($actual -ne $pin){throw 'Installer publisher pin mismatch.'}
+ Copy-Item -LiteralPath $file -Destination $stage
+}
 Copy-Item -LiteralPath (Join-Path $root 'docs/RELEASE-AND-RECOVERY.md') -Destination $stage
 'Extract into a new folder. Verify publisher signatures and SHA256SUMS.txt. Run FishTank.exe. Use --portable for an isolated profile. Keep existing profiles and vault passphrases backed up privately.' | Set-Content -LiteralPath (Join-Path $stage 'README.txt') -Encoding UTF8
 $checks=Get-ChildItem -LiteralPath $stage -File | Sort-Object Name | ForEach-Object {((Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant())+'  '+$_.Name}

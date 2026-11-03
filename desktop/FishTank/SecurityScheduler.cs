@@ -31,6 +31,18 @@ internal sealed class SecurityScheduler : IDisposable
         {
             var prefs = SecurityPreferences.Load();
             var now = DateTime.UtcNow;
+            var workspace=WorkspacePreferences.Load();
+            if(workspace.AutoDeleteAuditHistory&&now-workspace.LastHistoryCleanupUtc>=TimeSpan.FromDays(1))
+            {
+                await Task.Run(()=>{foreach(var file in HistoryPrivacy.Candidates(workspace.HistoryDays))HistoryPrivacy.DeleteSelected(file.Name);});
+                WorkspacePreferences.Update(p=>p.LastHistoryCleanupUtc=now);
+            }
+            string backup = await Task.Run(AutomaticBackups.Tick);
+            if (!disposed && backup != null) notify(backup);
+            string drill=AutomaticBackups.DrillReminder();if(!disposed&&drill!=null)notify(drill);
+            if (WorkspacePreferences.Load().ExternalDrivePrompts)
+                foreach (var drive in RemovableDriveOffers.Poll())
+                    if (!disposed) notify("External drive " + drive + " is available. Review its contents and add a custom scan in the scan queue; nothing was scanned automatically.");
             try { if (!(deferScan?.Invoke() ?? false)) await RunScheduledScan(now); }
             catch { if (!disposed) notify("Scan scheduling could not read or save its state. Review Scan scheduling; no successful scan was inferred."); }
             if (disposed) return;

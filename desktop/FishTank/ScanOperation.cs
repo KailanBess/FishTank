@@ -85,8 +85,11 @@ internal sealed class ScanOperation
     internal async Task RunAsync()
     {
         lock (gate) { if (started) throw new InvalidOperationException("This scan has already started."); started = running = true; StartedUtc = DateTime.UtcNow; phase = "Starting Defender"; }
+        string journal = null; FileStream profileLock = null;
         try
         {
+            profileLock = new FileStream(Path.Combine(Core.Data,"active-operation.lock"),FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None);
+            journal = OperationJournal.Begin(Kind + " scan");
             lock (gate) phase = "Waiting for Defender scan result";
             ResultJson = await Task.Run(scan);
             var report = Core.Parse<Dictionary<string, object>>(ResultJson);
@@ -96,6 +99,8 @@ internal sealed class ScanOperation
         finally
         {
             if (CancelRequested) await RefreshEvidenceAsync();
+            try { if(journal!=null)OperationJournal.Finish(journal); } catch { lock(gate) result += " Operation journal could not be cleared; review this result after restarting."; }
+            profileLock?.Dispose();
             lock (gate) { running = false; endedUtc = DateTime.UtcNow; }
         }
     }

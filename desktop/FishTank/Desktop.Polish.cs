@@ -36,11 +36,11 @@ public sealed partial class Desktop
         lastScan = kind + " scan · " + operation.Result; SetStatus(lastScan);
         if (current == "Antivirus") RenderPage();
     }
-    private void ShowScanProgress(ScanOperation operation)
+    private void ShowScanProgress(ScanOperation operation, Form owner = null)
     {
         if (operation == null) { SetStatus("No active or recent scan in this session."); return; }
         if (scanWindow != null && !scanWindow.IsDisposed) scanWindow.Dispose();
-        scanWindow = new ScanRunDialog(operation, palette) { Icon = Icon }; scanWindow.Show(this);
+        scanWindow = new ScanRunDialog(operation, palette) { Icon = Icon }; scanWindow.Show(owner ?? this);
     }
     private void OpenCurrentScan() => ShowScanProgress(ActiveScan ?? foregroundScan);
     private void OpenNotification() { notificationPending = true; RestoreFromTray(); DispatchNotification(); }
@@ -130,6 +130,8 @@ public sealed partial class Desktop
     {
         if (keyData == (Keys.Control | Keys.Shift | Keys.L)) { appLock?.Lock(); return true; }
         if (appLock?.IsLocked == true) return base.ProcessCmdKey(ref message, keyData);
+        try { string shortcut=ShortcutStore.Find(keyData); if(shortcut!=null){OpenTool(shortcut);return true;} } catch(Exception ex) { SetStatus("Custom shortcut could not be read: "+ex.Message); }
+        if (keyData == (Keys.Control | Keys.K)) { OpenToolsHub(); return true; }
         if (keyData == (Keys.Control | Keys.F)) { OpenSettingsSearch(); return true; }
         if (keyData == (Keys.Control | Keys.Shift | Keys.R)) { OpenRecoveryCenter(); return true; }
         if (keyData == (Keys.Alt | Keys.D1)) { Navigate("Dashboard"); return true; }

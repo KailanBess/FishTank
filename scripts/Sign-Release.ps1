@@ -34,6 +34,11 @@ try{
   $signature=Get-AuthenticodeSignature -LiteralPath $file
   if($signature.Status -ne 'Valid' -or $null -eq $signature.TimeStamperCertificate){throw 'Release requires valid, timestamped publisher signatures.'}
  }
+ foreach($name in @('Install-FishTank.ps1','Uninstall-FishTank.ps1')){
+  $file=Join-Path $PSScriptRoot $name
+  $result=Set-AuthenticodeSignature -LiteralPath $file -Certificate $certificate -HashAlgorithm SHA256 -TimestampServer $timestamp.AbsoluteUri
+  if($result.Status -ne 'Valid' -or !(Get-AuthenticodeSignature -LiteralPath $file).TimeStamperCertificate){throw 'Installer scripts require valid timestamped publisher signatures.'}
+ }
  $sha=[Security.Cryptography.SHA256]::Create()
  try{$pin=([BitConverter]::ToString($sha.ComputeHash($certificate.RawData))).Replace('-','')}finally{$sha.Dispose()}
  $pin | Set-Content -LiteralPath (Join-Path $root 'packages/PublisherCertificateSha256.txt') -Encoding ASCII

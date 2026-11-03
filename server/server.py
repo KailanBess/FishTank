@@ -23,7 +23,7 @@ class Rejected(Exception):
 
 
 class Service:
-    def __init__(self, database, pepper, deliver=None, clock=time.time):
+    def __init__(self, database, pepper, deliver=None, clock=time.time, origin=None):
         if len(pepper) < 32 or pepper.startswith('REPLACE'):
             raise ValueError('FISHTANK_PEPPER must have at least 32 random characters')
         self.database, self.pepper, self.clock = str(database), pepper.encode(), clock
@@ -42,6 +42,12 @@ class Service:
             ''')
         if os.name != 'nt':
             os.chmod(self.database, 0o600)
+        self.passkeys = None
+        from device_status import DeviceStatus
+        self.device_status = DeviceStatus(self, Rejected)
+        if origin:
+            from passkeys import Passkeys
+            self.passkeys = Passkeys(self, origin, Rejected)
 
     @contextmanager
     def db(self):
@@ -83,6 +89,12 @@ class Service:
             device = db.execute('SELECT * FROM devices WHERE token=? AND enabled=1', (owner,)).fetchone()
         if device is None:
             raise Rejected(401, 'Device authorization required')
+        if path.startswith('/v1/devices/'):
+            return self.device_status.request(token, device, path, body)
+        if path.startswith('/v1/passkeys/'):
+            if self.passkeys is None:
+                raise Rejected(503, 'Passkeys are not configured on this server')
+            return self.passkeys.native(token, device, path, body)
         if path == '/v1/status':
             return {'version': 1, 'binding': device['binding'],
                     'email_available': bool(device['email']), 'sms_available': bool(device['phone'])}
@@ -140,19 +152,31 @@ class Service:
 
     def __call__(self, environ, start_response):
         try:
-            if environ.get('REQUEST_METHOD') != 'POST' or environ.get('HTTP_ORIGIN'):
+            path = environ.get('PATH_INFO', '')
+            if path in ('/passkeys', '/passkeys.js') and environ.get('REQUEST_METHOD') == 'GET' and self.passkeys:
+                name = 'passkeys.html' if path == '/passkeys' else 'passkeys.js'
+                data = Path(__file__).with_name(name).read_bytes()
+                start_response('200 OK', [('Content-Type', 'text/html; charset=utf-8' if name.endswith('.html') else 'text/javascript; charset=utf-8'),
+                    ('Content-Length', str(len(data))), ('Cache-Control', 'no-store'), ('Referrer-Policy', 'no-referrer'), ('X-Content-Type-Options', 'nosniff'),
+                    ('Content-Security-Policy', "default-src 'none'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"),
+                    ('Permissions-Policy', 'publickey-credentials-create=(self), publickey-credentials-get=(self)')])
+                return [data]
+            browser = path in ('/passkeys/options', '/passkeys/finish')
+            if environ.get('REQUEST_METHOD') != 'POST' or (not browser and environ.get('HTTP_ORIGIN')):
                 raise Rejected(405, 'Only authenticated non-browser POST requests are supported')
+            if browser and (not self.passkeys or environ.get('HTTP_ORIGIN') != self.passkeys.origin or environ.get('HTTP_SEC_FETCH_SITE', 'same-origin') != 'same-origin'):
+                raise Rejected(403, 'Same-origin ceremony required')
             if environ.get('CONTENT_TYPE', '').split(';')[0] != 'application/json':
                 raise Rejected(415, 'JSON required')
             length = int(environ.get('CONTENT_LENGTH', '0'))
-            if length < 2 or length > 4096:
+            if length < 2 or length > (65536 if browser else 16384 if path == '/v1/devices/publish' else 4096):
                 raise Rejected(413, 'Invalid request size')
             body = json.loads(environ['wsgi.input'].read(length))
             if not isinstance(body, dict):
                 raise Rejected(400, 'JSON object required')
             auth = environ.get('HTTP_AUTHORIZATION', '')
             token = auth[7:] if auth.startswith('Bearer ') else ''
-            result = self.request(token, environ.get('PATH_INFO', ''), body)
+            result = self.passkeys.browser(path, body) if browser else self.request(token, path, body)
             status = 200
         except Rejected as error:
             status, result = error.status, {'error': error.message}
@@ -244,7 +268,7 @@ def delivery(channel, destination, code):
 
 def create_app():
     return Service(os.environ.get('FISHTANK_DATABASE', '/var/lib/fishtank-mfa/service.sqlite3'),
-                   os.environ['FISHTANK_PEPPER'])
+                   os.environ['FISHTANK_PEPPER'], origin=os.environ.get('FISHTANK_ORIGIN'))
 
 
 if __name__ == '__main__':

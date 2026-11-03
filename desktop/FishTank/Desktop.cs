@@ -30,7 +30,7 @@ public sealed partial class Desktop : Form
 	private FolderMonitor monitor = new FolderMonitor();
 
 	private bool busy;
-	internal bool HasRunningOperation => busy || foregroundScan?.IsRunning == true || (securityScheduler?.IsScanning ?? false);
+	internal bool HasRunningOperation => busy || ScanQueueStore.Running || foregroundScan?.IsRunning == true || (securityScheduler?.IsScanning ?? false);
 
 	private bool observing;
 
@@ -141,6 +141,7 @@ public sealed partial class Desktop : Form
 		BuildShell();
 		appLock = new AppLockController(this, SetStatus);
 		securityScheduler = new SecurityScheduler(NotifySecurity, () => HasRunningOperation || Application.OpenForms.Cast<Form>().Any(form => form.Modal), ScheduledScanFinished);
+        try { var interrupted=OperationJournal.Pending(); if(interrupted!=null&&!OperationJournal.IsAlive(interrupted))NotifySecurity("Interrupted operation: "+interrupted.Kind+" started "+interrupted.StartedUtc.ToLocalTime().ToString("g")+". Its final application result was not recorded. Review Windows Security before restarting work."); } catch(Exception ex) { SetStatus("Operation recovery history could not be read: "+ex.Message); }
 		liveDisplay = new System.Windows.Forms.Timer { Interval = 2000 };
 		liveDisplay.Tick += delegate { RefreshLiveDisplay(); DispatchNotification(); browserBackend?.CheckIdle(); if (browser != null && !BrowserAccessAllowed()) LockBrowserSession(); }; liveDisplay.Start();
 		bool liveStarted = false;
@@ -229,6 +230,8 @@ public sealed partial class Desktop : Form
 		SetStatus(message);
 		try
 		{
+			bool popup = NoticeCenter.Add(message, NotificationDestination.For(message), 1);
+			if (!popup) return;
 			if (!SecurityPreferences.Load().DesktopNotifications) return;
 			EnsureTray();
 			notificationTarget = NotificationDestination.For(message);
@@ -275,7 +278,7 @@ public sealed partial class Desktop : Form
 			if (IsDisposed || !liveDetection.Enabled) return;
 			SetStatus("Live Defender alert: " + item.Kind + ". Open Monitoring to review the source evidence.");
 			RefreshLiveDisplay();
-			try { if (SecurityPreferences.Load().LiveDetectionNotifications) { EnsureTray(); notificationTarget = "Monitoring"; securityIcon.ShowBalloonTip(8000, "FishTank · Defender activity", "Defender activity or a monitoring coverage gap needs review. Open FishTank → Monitoring. No file paths are shown in notifications.", ToolTipIcon.Warning); } }
+			try { if (NoticeCenter.Add("Defender activity: " + item.Kind, "Monitoring", 2) && SecurityPreferences.Load().LiveDetectionNotifications) { EnsureTray(); notificationTarget = "Monitoring"; securityIcon.ShowBalloonTip(8000, "FishTank · Defender activity", "Defender activity or a monitoring coverage gap needs review. Open FishTank → Monitoring. No file paths are shown in notifications.", ToolTipIcon.Warning); } }
 			catch { /* Event history and coverage status remain available. */ }
 		}); } catch (InvalidOperationException) { }
 	}

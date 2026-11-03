@@ -41,6 +41,16 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build Windows UI regression checks
         run: dotnet build tests/WindowsUi/WindowsUi.csproj -c Release
+      - name: Check workspace, queue, encrypted vault extensions and signed reports
+        shell: pwsh
+        run: |
+          dotnet build tests/Expansion/Expansion.csproj -c Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./tests/Expansion/bin/Release/net48/Expansion.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify repeated unsigned builds
+        shell: pwsh
+        run: ./scripts/Test-ReproducibleBuild.ps1
       - name: Exercise pages and capture screenshots
         shell: pwsh
         run: |
@@ -55,6 +65,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           ./tests/Test-UpdateHelper.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Exercise per-user installer file operations without registry changes
+        shell: pwsh
+        run: ./tests/Test-Installer.ps1
       - name: Package unsigned preview
         shell: pwsh
         run: ./scripts/Package-Preview.ps1 -NoBuild
@@ -95,3 +108,24 @@ jobs:
           name: FishTank-browser-review
           path: browser-artifacts/
           if-no-files-found: ignore
+
+  server-and-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Install pinned server dependencies
+        run: python3 -m pip install -r server/requirements.lock
+      - name: Check OTP, WebAuthn cryptography and signed status boundaries
+        run: python3 -m unittest discover -s server -v
+      - name: Scan source credentials and generate SBOM
+        run: python3 scripts/Check-Source.py
+      - name: Audit pinned server dependencies
+        run: |
+          python3 -m pip install pip-audit==2.10.1
+          python3 -m pip_audit -r server/requirements.lock
+      - name: Save dependency SBOM
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: FishTank-dependencies
+          path: packages/FishTank-sbom.json

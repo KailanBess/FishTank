@@ -32,6 +32,7 @@ internal static class ProtectedStore
             try
             {
                 byte[] cipher = ProtectedData.Protect(plain, null, DataProtectionScope.CurrentUser);
+                AutomaticBackups.RequireSpace(Core.Data, cipher.Length);
                 using (var file = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None))
                 { file.Write(cipher, 0, cipher.Length); file.Flush(true); }
                 if (File.Exists(path)) File.Replace(temp, path, path + ".bak"); else File.Move(temp, path);

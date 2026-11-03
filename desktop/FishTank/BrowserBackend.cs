@@ -58,7 +58,9 @@ internal sealed class BrowserBackend : IDisposable
             if (path == "/api/vault/get")
             {
                 var id = Core.Parse<IdCommand>(body)?.Id;
-                return Core.Json(vault.Entries.Single(e => e.Id == id));
+                var editable = vault.Entries.Single(e => e.Id == id);
+                editable.History.Clear(); editable.Attachments.Clear();
+                return Core.Json(editable);
             }
             if (path == "/api/vault/save") { vault.Put(Core.Parse<PasswordEntry>(body) ?? throw new ArgumentException()); return "{}"; }
             if (path == "/api/vault/delete")

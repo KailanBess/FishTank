@@ -43,7 +43,7 @@ public static class SelfHostedMfa
 		}
 	}
 
-	private static Dictionary<string, object> Post(DeliveryConfiguration config, string path, object payload)
+	internal static Dictionary<string, object> Post(DeliveryConfiguration config, string path, object payload)
 	{
 		ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
 		HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(config.Origin.TrimEnd('/') + path);
@@ -68,7 +68,8 @@ public static class SelfHostedMfa
 				throw new IOException("Verification service refused the request");
 			}
 			using StreamReader streamReader = new StreamReader(httpWebResponse.GetResponseStream());
-			char[] array = new char[8193];
+            int responseLimit = path == "/v1/devices/list" ? 131072 : 8192;
+			char[] array = new char[responseLimit + 1];
 			int i;
 			int num;
 			for (i = 0; i < array.Length; i += num)
@@ -78,7 +79,7 @@ public static class SelfHostedMfa
 					break;
 				}
 			}
-			if (i > 8192)
+			if (i > responseLimit)
 			{
 				throw new IOException("Verification response too large");
 			}
