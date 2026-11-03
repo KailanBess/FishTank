@@ -1,0 +1,7 @@
+server/*.py text eol=lf
+server/*.sh text eol=lf
+server/*.service text eol=lf
+server/*.example text eol=lf
+server/*.html text eol=lf
+server/*.js text eol=lf
+server/requirements* text eol=lf

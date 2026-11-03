@@ -66,6 +66,15 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           ./tests/Test-UpdateHelper.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Expanded workspace and installer gates
+        shell: pwsh
+        run: |
+          dotnet build tests/Expansion/Expansion.csproj -c Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./tests/Expansion/bin/Release/net48/Expansion.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./tests/Test-Installer.ps1
+          ./scripts/Test-ReproducibleBuild.ps1
       - name: Sign and verify release executables
         shell: powershell
         env:

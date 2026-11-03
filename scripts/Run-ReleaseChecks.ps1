@@ -16,7 +16,7 @@ Check-Step 'Logic' { & $DotnetPath run --project (Join-Path $root 'tests/Logic/L
 Check-Step 'Browser' { & $DotnetPath run --project (Join-Path $root 'tests/Browser/Browser.csproj') }
 Check-Step 'PowerShell' { & (Join-Path $root 'tests/Check-PowerShell.ps1'); if($?){$global:LASTEXITCODE=0}else{$global:LASTEXITCODE=1} }
 Check-Step 'Collectors' { & (Join-Path $root 'tests/Test-Collectors.ps1'); if($?){$global:LASTEXITCODE=0}else{$global:LASTEXITCODE=1} }
-foreach($suite in @('Resilience','WindowsSecurity','WindowsUi')){
+foreach($suite in @('Resilience','Expansion','WindowsSecurity','WindowsUi')){
  Check-Step $suite {
   & $DotnetPath build (Join-Path $root "tests/$suite/$suite.csproj") -c Release
   if($LASTEXITCODE -ne 0){throw 'Build failed'}
@@ -31,6 +31,8 @@ Check-Step 'UpdateRollback' {
  if($LASTEXITCODE -ne 0){throw 'Update fixture build failed'}
  & (Join-Path $root 'tests/Test-UpdateHelper.ps1')
 }
+Check-Step 'Installer' { & (Join-Path $root 'tests/Test-Installer.ps1') }
+Check-Step 'RepeatedBuild' { & (Join-Path $root 'scripts/Test-ReproducibleBuild.ps1') }
 $pending=@('Trusted signed install/rollback with maintainer certificate','Separate Windows account and physical display scaling','External authenticator and live email/SMS delivery','Outside usability feedback','Independent security review')
 $report=[pscustomobject]@{GeneratedUtc=[DateTime]::UtcNow.ToString('o');Automated=$results;Pending=$pending;ReadyForTrustedRelease=$false}
 $report | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $output 'release-checks.json') -Encoding UTF8
