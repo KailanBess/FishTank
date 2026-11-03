@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Security.Principal;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 
 namespace FishTank;
@@ -103,10 +104,10 @@ public static class Core
 		return RunCancelable(exe, args, timeout, CancellationToken.None);
 	}
 
-	public static CommandResult RunCancelable(string exe, string args, int timeout, CancellationToken cancellation)
+	public static CommandResult RunCancelable(string exe, string args, int timeout, CancellationToken cancellation, string standardInput = null)
 	{
 		cancellation.ThrowIfCancellationRequested();
-		Process process = new Process();
+		using Process process = new Process();
 		process.StartInfo = new ProcessStartInfo(exe, args)
 		{
 			UseShellExecute = false,
@@ -114,6 +115,7 @@ public static class Core
 			RedirectStandardOutput = true,
 			RedirectStandardError = true
 		};
+        process.StartInfo.RedirectStandardInput = standardInput != null;
 		StringBuilder output = new StringBuilder();
         // A PowerShell 7 launcher can pass its incompatible module path to this .NET process.
         // Scope module selection to the Windows PowerShell child, without changing the user's environment.
@@ -153,6 +155,10 @@ public static class Core
 		process.Start();
 		process.BeginOutputReadLine();
 		process.BeginErrorReadLine();
+        Task inputWriter = null;
+        if (standardInput != null) inputWriter = Task.Run(() => {
+            using (var input = new StreamWriter(process.StandardInput.BaseStream, new UTF8Encoding(false))) input.Write(standardInput);
+        });
 		Stopwatch stopwatch = Stopwatch.StartNew();
 		while (!process.WaitForExit(100))
 		{
@@ -171,6 +177,7 @@ public static class Core
 			}
 		}
 		process.WaitForExit();
+        if (inputWriter != null) inputWriter.GetAwaiter().GetResult();
 		CommandResult commandResult = new CommandResult();
 		commandResult.ExitCode = process.ExitCode;
 		commandResult.Output = output.ToString();
@@ -193,8 +200,10 @@ public static class Core
 			using StreamReader streamReader = new StreamReader(stream);
 			text = streamReader.ReadToEnd();
 		}
-		string text2 = Convert.ToBase64String(Encoding.Unicode.GetBytes("& {" + text + "\n} -Mode " + mode));
-		CommandResult commandResult = Run(exe, "-NoProfile -NonInteractive -EncodedCommand " + text2, 90000);
+        // Keep the command short even as the embedded collector grows beyond Windows' argv limit.
+        string bootstrap = "[Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false); & ([ScriptBlock]::Create([Console]::In.ReadToEnd())) -Mode " + mode;
+        string text2 = Convert.ToBase64String(Encoding.Unicode.GetBytes(bootstrap));
+        CommandResult commandResult = RunCancelable(exe, "-NoProfile -NonInteractive -EncodedCommand " + text2, 90000, CancellationToken.None, text);
 		if (commandResult.ExitCode != 0)
 		{
 			throw new IOException(commandResult.Output + "\n" + commandResult.Error);

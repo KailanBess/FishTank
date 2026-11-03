@@ -72,6 +72,8 @@ internal static class Program
             TestOfflineUpdates();
             var signature = TrustedDownloads.Signature(typeof(Program).Assembly.Location);
             Check(signature.Status == "NotSigned", "Built-in publisher verifier did not inspect the unsigned fixture");
+            var health = Core.Parse<System.Collections.Generic.List<EvidenceItem>>(Core.Collect("SecurityHealth"));
+            Check(health.Count >= 7 && health.All(x => new[] { "Unknown", "Review", "No issue observed" }.Contains(x.State)), "Large collector resource did not execute with bounded unknown states");
             File.WriteAllText(Path.Combine(root, "github-update-result.json"), "{\"Status\":\"Pending\"}"); Check(UpdateRecoveryStatus.Notice() != null, "Interrupted update hidden");
             File.WriteAllText(Path.Combine(root, "github-update-result.json"), "broken result"); Check(UpdateRecoveryStatus.Notice().Contains("could not be read"), "Damaged update result treated as success");
             Console.WriteLine(checks + " isolated-profile resilience checks passed. No live scan, user profile, certificate trust or installation was changed."); return 0;
