@@ -149,6 +149,7 @@ try {
     Check(BackupAgePolicy.Assess("Vault", DateTime.MinValue.AddHours(6), DateTime.MinValue.AddHours(6), backupNow, 7).State == "Unknown", "Timezone-adjusted empty date treated as a real backup");
     Reject(() => BackupAgePolicy.Assess("Vault", backupNow, backupNow, backupNow, 0), "Zero backup age allowed");
     Reject(() => BackupAgePolicy.Assess("Vault", backupNow, backupNow, backupNow, 366), "Oversized backup age allowed");
+    Check(GitHubReleasePolicy.Version("preview-v2.3.4") == "2.3.4.0", "Preview release version namespace rejected");
     var goodProtection = new LiveProtectionReading { AntivirusEnabled = true, RealTimeProtectionEnabled = true, Mode = "Normal" };
     Check(LiveDetectionPolicy.Coverage(false, true, goodProtection, backupNow, backupNow).StartsWith("Off"), "Optional live monitoring enabled by status alone");
     Check(LiveDetectionPolicy.Coverage(true, false, goodProtection, backupNow, backupNow).Contains("Coverage gap"), "Missing event subscription reported protection");

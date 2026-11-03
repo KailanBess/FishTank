@@ -26,6 +26,7 @@ public static class GitHubReleasePolicy
     public const string LatestUrl = "https://api.github.com/repos/" + Repository + "/releases/latest";
     public static string Version(string tag)
     {
+        if ((tag ?? "").StartsWith("preview-v", StringComparison.Ordinal)) tag = tag.Substring("preview-".Length);
         if (!Regex.IsMatch(tag ?? "", "\\Av?[0-9]+\\.[0-9]+(?:\\.[0-9]+){0,2}\\z") || !System.Version.TryParse((tag ?? "").TrimStart('v'), out var version))
             throw new ArgumentException("GitHub release tag must be a stable vMajor.Minor.Build.Revision version.");
         return new System.Version(version.Major, version.Minor, Math.Max(0, version.Build), Math.Max(0, version.Revision)).ToString();
@@ -35,6 +36,7 @@ public static class GitHubReleasePolicy
         if (release == null || release.id <= 0 || release.draft || (release.prerelease && !allowPreview) || release.assets == null || release.assets.Length > 100)
             throw new ArgumentException("No supported public stable GitHub release was returned.");
         Version(release.tag_name);
+        if ((release.tag_name ?? "").StartsWith("preview-", StringComparison.Ordinal) && !release.prerelease) throw new ArgumentException("Preview-tagged releases must be marked as prereleases.");
         if (name != "FishTank.exe" && name != "FishTank.Cli.exe") throw new ArgumentException("Unsupported update component.");
         var matches = release.assets.Where(x => x.name == name).ToArray();
         if (matches.Length != 1) throw new ArgumentException("The release must contain exactly one " + name + " asset.");

@@ -7,6 +7,7 @@ namespace FishTank;
 
 public static class Program
 {
+    internal static string ActiveProfileName;
 	[STAThread]
 	public static int Main(string[] args)
 	{
@@ -34,6 +35,7 @@ public static class Program
 			if (args.Length >= 2 && args[0] == "--profile")
 			{
 				Core.Data = ProfilePaths.Resolve(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FishTank"), args[1]);
+                ActiveProfileName = args[1];
 				var remaining = new string[args.Length - 2]; Array.Copy(args, 2, remaining, 0, remaining.Length); args = remaining;
 			}
 			string scanFile = null;

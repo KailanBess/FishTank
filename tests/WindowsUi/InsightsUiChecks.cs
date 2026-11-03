@@ -51,6 +51,20 @@ internal static class InsightsUiChecks
                                 check(controls.OfType<Button>().Any(x => x.Text == "Check GitHub release"), "GitHub release checking is not discoverable");
                                 check(!controls.OfType<Button>().Single(x => x.Text == "Apply update").Enabled, "Apply enabled without a verified update");
                                 check(controls.OfType<TextBox>().Single(x => x.AccessibleName == "GitHub update result").Text.StartsWith("Choose Check"), "Opening updates silently contacted GitHub");
+                                check(controls.OfType<Button>().Any(x => x.Text == "Use preview updates (no certificate)"), "Certificate-free setup option missing");
+                                UpdateChannelPreferences.Save(new UpdateChannelPreferences { Channel = "Preview", AllowUnsignedPreviewUpdates = true });
+                                dialog.GetType().GetMethod("RefreshReadiness", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(dialog, null);
+                                check(controls.OfType<Button>().Single(x => x.Text == "Download and verify").Enabled, "Preview still requires a publisher certificate");
+                                check(!controls.OfType<Button>().Single(x => x.Text == "Apply update").Enabled, "Preview Apply enabled without staged files");
+                                check(controls.OfType<Label>().Single(x => x.AccessibleName == "GitHub update readiness").Text.Contains("signatures are not"), "Unsigned preview assurance was hidden");
+                                ProtectedStore.Write("pending-github-update", new PendingGitHubUpdate { Version = typeof(Desktop).Assembly.GetName().Version.ToString(), TrustMode = GitHubPreviewUpdates.Mode, Files = new[] { new StagedExecutable(), new StagedExecutable() } });
+                                dialog.GetType().GetMethod("RefreshReadiness", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(dialog, null);
+                                check(!controls.OfType<Button>().Single(x => x.Text == "Apply update").Enabled, "Already installed update offered for reapplication");
+                                ProtectedStore.Write<PendingGitHubUpdate>("pending-github-update", null);
+                                using (var bitmap = new Bitmap(dialog.Width, dialog.Height)) { dialog.DrawToBitmap(bitmap, new Rectangle(Point.Empty, dialog.Size)); bitmap.Save(Path.Combine(output, "GitHubUpdates-preview-enabled.png")); }
+                                UpdateChannelPreferences.Save(new UpdateChannelPreferences());
+                                dialog.GetType().GetMethod("RefreshReadiness", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(dialog, null);
+                                check(!controls.OfType<Button>().Single(x => x.Text == "Download and verify").Enabled, "Turning preview off did not restore signed-only readiness");
                             }
                             if (method == "OpenScanSchedule") check(!controls.OfType<CheckBox>().Single(x => x.Text == "Enable scheduled Defender scans").Checked, "Automatic scanning defaults on");
                             if (method == "OpenSupportReport")

@@ -78,10 +78,10 @@ public sealed class SecurityToolsDialog : Form
         try { var baseline = FolderIntegrityStore.Baseline(); if (baseline != null) { folder = baseline.Root; folderName.Text = folder; recursive.Checked = baseline.Recursive; exclusions.Lines = baseline.Exclusions; } }
         catch { folderName.Text = "Saved baseline could not be read. It has not been replaced."; }
 
-        var downloads = Page(tabs, "Downloads and updates", "Inspect a file's Windows publisher signature. Valid signatures are not malware verdicts. Update staging additionally requires a trusted SHA-256, a configured publisher certificate pin, and a newer FishTank version. Current unsigned development builds cannot pass signed-update verification. Only the separate confirmed GitHub installation action replaces and restarts the app.");
-        Explain(downloads, "GitHub updates: only public stable releases from KailanBess/FishTank. Checking and downloading require consent; installation is a separate confirmed action. Signed desktop and CLI assets are required. Your data and existing runtime configuration are preserved.");
+        var downloads = Page(tabs, "Downloads and updates", "Inspect a file's Windows publisher signature. Valid signatures are not malware verdicts. Signed update staging requires SHA-256 checks, a configured publisher pin and a newer version. Optional GitHub preview mode instead uses explicit unsigned consent and GitHub digest/provenance checks. Configure it in Settings → GitHub updates. Only the separate confirmed GitHub installation action replaces and restarts the app.");
+        Explain(downloads, "GitHub updates: public releases from KailanBess/FishTank on your selected channel. Checking and downloading require consent; installation is a separate confirmed action. Both desktop and CLI assets are required. Signed mode checks the publisher; optional preview mode checks GitHub provenance and digests after unsigned consent. Your data and existing runtime configuration are preserved.");
         Add(downloads, "Check GitHub for updates", () => { if (Confirm("Contact GitHub's API to check KailanBess/FishTank public stable releases? GitHub can see your IP address; no app credentials are sent.")) Run(GitHubUpdates.Check); });
-        Add(downloads, "Download and verify GitHub update", () => { if (Confirm("Download both release executables from GitHub and verify their digests, publisher pin and versions? No installation occurs in this step.")) Run(GitHubUpdates.DownloadAndStage); });
+        Add(downloads, "Download and verify GitHub update", () => { if (Confirm("Download both release executables from GitHub and verify digests and versions using the selected signed or unsigned-preview mode? No installation occurs in this step.")) Run(GitHubUpdates.DownloadAndStage); });
         Add(downloads, "Apply verified GitHub update", () => {
             if (Confirm("Close FishTank, reverify and install both staged GitHub executables, retain rollback copies, and restart? Finish open work first. Your private data is not replaced. Installation needs write access to the app folder; no administrator elevation is requested automatically.")) Authorize(GitHubUpdateInstaller.Start);
         });
@@ -119,7 +119,7 @@ public sealed class SecurityToolsDialog : Form
         var schedule = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 240, AccessibleName = "Folder integrity comparison schedule" };
         schedule.Items.AddRange(new object[] { "Off", "Hourly", "Daily", "Weekly" });
         schedule.SelectedIndex = Array.IndexOf(new[] { 0, 1, 24, 168 }, preferences?.FolderCheckHours ?? 0); settings.Controls.Add(schedule);
-        Explain(settings, "Trusted publisher certificate SHA-256 (leave blank until you have an authenticated publisher pin):");
+        Explain(settings, "Signed updates only: trusted publisher certificate SHA-256 (preview mode does not need this):");
         var pin = new TextBox { Width = 560, MaxLength = 66, Text = preferences?.PublisherCertificateSha256 ?? "", AccessibleName = "Trusted publisher certificate SHA-256" }; settings.Controls.Add(pin);
         Explain(settings, "Optional direct HTTPS release-manifest URL (same host as its package; no redirects). Leave blank until a signed release channel exists:");
         var feed = new TextBox { Width = 560, MaxLength = 2048, Text = preferences?.UpdateFeedUrl ?? "", AccessibleName = "Trusted release manifest HTTPS URL" }; settings.Controls.Add(feed);

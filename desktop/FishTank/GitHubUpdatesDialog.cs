@@ -9,7 +9,7 @@ internal sealed class GitHubUpdatesDialog : Form
 {
     private readonly Label readiness;
     private readonly TextBox result;
-    private readonly Button check, download, apply, preferences, channel;
+    private readonly Button check, download, apply, preferences, channel, previewMode;
     private bool working;
     internal GitHubUpdatesDialog(Palette colors, Action openPreferences, Action openChannel)
     {
@@ -22,18 +22,26 @@ internal sealed class GitHubUpdatesDialog : Form
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         var heading = new Label { Text = "GitHub updates", AutoSize = true, Font = new Font("Segoe UI", 18, FontStyle.Bold), Margin = new Padding(0, 0, 0, 12) };
         readiness = new Label { AutoSize = true, UseMnemonic = false, AccessibleName = "GitHub update readiness", Margin = new Padding(0, 0, 0, 12) };
-        var notice = new Label { Text = "Check releases from KailanBess/FishTank, then download and verify before applying. Clicking Check or Download contacts GitHub, which can see your IP address. Opening this window makes no network request. Unsigned preview ZIPs cannot be applied as trusted updates.", AutoSize = true, UseMnemonic = false, Margin = new Padding(0, 0, 0, 12) };
+        var notice = new Label { Text = "Check releases from KailanBess/FishTank, then download and verify before applying. Checking, downloading, and applying previews contacts GitHub, which can see your IP address. Opening this window makes no network request. Preview updates use GitHub HTTPS and SHA-256 checks instead of Windows publisher signatures. They require your one-time opt-in.", AutoSize = true, UseMnemonic = false, Margin = new Padding(0, 0, 0, 12) };
         var actions = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = true, Margin = Padding.Empty };
         Func<string, Button> button = title => { var b = new CleanButton { Text = title, Width = TextRenderer.MeasureText(title, Font).Width + 40, Height = 42, Fill = colors.Surface2, Hover = colors.Surface, Ink = colors.Text, Border = colors.Line, FocusColor = colors.Accent, Radius = 8, Margin = new Padding(0, 0, 8, 8), UseMnemonic = false, AccessibleName = title, FlatStyle = FlatStyle.Flat, BackColor = colors.Surface2, ForeColor = colors.Text }; b.FlatAppearance.BorderColor = colors.Line; actions.Controls.Add(b); return b; };
         check = button("Check GitHub release"); download = button("Download and verify"); apply = button("Apply update");
-        preferences = button("Publisher trust settings"); channel = button("Release channel");
+        previewMode = button("Use preview updates (no certificate)");
+        preferences = button("Signed update settings"); channel = button("Release channel");
         var releases = button("View GitHub releases"); var last = button("Last update result");
         check.Click += async delegate { await RunAsync(GitHubUpdates.Check); };
         download.Click += async delegate { await RunAsync(GitHubUpdates.DownloadAndStage); };
         apply.Click += delegate {
             if (working) return;
-            if (ExplainedMessageBox.Show(this, "Apply the verified GitHub update? FishTank will reverify both executables, close, replace them, retain rollback copies and restart. Finish open work first. Your private data is retained.", "Apply GitHub update", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            if (ExplainedMessageBox.Show(this, "Apply the staged GitHub update? FishTank will recheck both executables, close, replace them, retain rollback copies and restart. Preview updates recheck GitHub digests but do not verify a Windows publisher signature. Finish open work first. Your private data is retained.", "Apply GitHub update", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
             try { GitHubUpdateInstaller.Start(); } catch (Exception ex) { result.Text = "Update was not applied.\r\n" + ex.Message; RefreshReadiness(); }
+        };
+        previewMode.Click += delegate {
+            try { var settings = UpdateChannelPreferences.Load(); bool enable = !GitHubPreviewUpdates.Allowed(settings);
+                if (enable && ExplainedMessageBox.Show(this, "Enable unsigned GitHub preview updates? Files must match this repository's GitHub SHA-256 digests and be newer FishTank executables. A Windows publisher signature will not be verified. Enable this only if you trust KailanBess/FishTank. Applying each update still requires confirmation.", "Enable preview updates", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
+                settings.AllowUnsignedPreviewUpdates = enable; settings.Channel = enable ? "Preview" : "Stable"; UpdateChannelPreferences.Save(settings); RefreshReadiness();
+                result.Text = enable ? "Preview updates enabled. Choose Check GitHub release, then Download and verify. No certificate is needed." : "Preview updates disabled. Signed-release verification is required.";
+            } catch (Exception ex) { result.Text = ex.Message; }
         };
         preferences.Click += delegate { openPreferences(); RefreshReadiness(); };
         channel.Click += delegate { openChannel(); RefreshReadiness(); };
@@ -47,16 +55,22 @@ internal sealed class GitHubUpdatesDialog : Form
     private void RefreshReadiness()
     {
         if (IsDisposed) return;
-        check.Enabled = preferences.Enabled = channel.Enabled = !working;
+        check.Enabled = preferences.Enabled = channel.Enabled = previewMode.Enabled = !working;
         download.Enabled = apply.Enabled = false;
         try {
             var prefs = SecurityPreferences.Load(); var selected = UpdateChannelPreferences.Load(); var pending = GitHubUpdates.Pending();
             bool trusted = !string.IsNullOrEmpty(prefs.PublisherCertificateSha256);
+            bool preview = GitHubPreviewUpdates.Allowed(selected);
+            bool pendingPreview = pending?.TrustMode == GitHubPreviewUpdates.Mode;
+            Version pendingVersion;
+            bool newer = pending != null && Version.TryParse(pending.Version, out pendingVersion) && pendingVersion > typeof(Program).Assembly.GetName().Version;
+            previewMode.Text = preview ? "Turn off preview updates" : "Use preview updates (no certificate)";
+            previewMode.Width = TextRenderer.MeasureText(previewMode.Text, Font).Width + 40;
             readiness.Text = "Installed: " + typeof(Program).Assembly.GetName().Version + " · Channel: " + selected.Channel
-                + "\r\n" + (trusted ? "Publisher trust configured." : "Publisher trust is not configured. Set an independently verified publisher certificate pin before downloading an installable update.")
-                + "\r\n" + (pending == null ? "No verified update is ready to apply." : "Staged version: " + pending.Version + ". Apply rechecks signatures, digests and version before replacing files.");
-            download.Enabled = !working && trusted;
-            apply.Enabled = !working && trusted && pending?.Files != null && pending.Files.Length == 2;
+                + "\r\n" + (preview ? "Easy preview updates enabled. GitHub checksums are verified; Windows publisher signatures are not." : trusted ? "Signed updates: publisher trust configured." : "For certificate-free updates, choose Use preview updates below. Signed releases require publisher trust settings.")
+                + "\r\n" + (pending == null || !newer ? "No newer staged update is ready to apply." : "Staged version: " + pending.Version + (pendingPreview ? " · unsigned GitHub preview. Apply rechecks GitHub, digests and version." : " · signed release. Apply rechecks publisher, digests and version."));
+            download.Enabled = !working && (trusted || preview);
+            apply.Enabled = !working && newer && (pendingPreview ? preview : trusted) && pending?.Files != null && pending.Files.Length == 2;
         } catch { readiness.Text = "Update preferences or staging history could not be read. Applying updates is unavailable until this is resolved; existing data has been preserved."; }
     }
     private async Task RunAsync(Func<string> operation)

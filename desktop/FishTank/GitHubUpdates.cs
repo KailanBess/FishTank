@@ -12,10 +12,12 @@ public sealed class StagedExecutable
     public string Version;
     public string Sha256;
     public string PublisherPin;
+    public long GitHubAssetId;
 }
 public sealed class PendingGitHubUpdate
 {
     public long ReleaseId;
+    public string TrustMode = "Publisher", Repository, ReleaseTag;
     public string Version;
     public StagedExecutable[] Files;
 }
@@ -41,7 +43,9 @@ public static class GitHubUpdates
     }
     public static GitHubRelease Latest()
     {
-        bool preview=UpdateChannelPreferences.Load().Channel=="Preview";
+        var preferences = UpdateChannelPreferences.Load();
+        bool preview=preferences.Channel=="Preview";
+        bool previewOnly = GitHubPreviewUpdates.Allowed(preferences) && string.IsNullOrEmpty(SecurityPreferences.Load().PublisherCertificateSha256);
         using (var response = Open(new Uri(preview?"https://api.github.com/repos/"+GitHubReleasePolicy.Repository+"/releases?per_page=20":GitHubReleasePolicy.LatestUrl)))
         using (var data = new MemoryStream())
         {
@@ -49,10 +53,21 @@ public static class GitHubUpdates
             using (var stream = response.GetResponseStream()) TransferLimits.CopyBounded(stream, data, 1024 * 1024);
             string json=Encoding.UTF8.GetString(data.ToArray());
             GitHubRelease release;
-            if(preview){var candidates=Core.Parse<GitHubRelease[]>(json);release=null;foreach(var candidate in candidates??new GitHubRelease[0]){if(candidate.draft)continue;try{GitHubReleasePolicy.Asset(candidate,"FishTank.exe",true);GitHubReleasePolicy.Asset(candidate,"FishTank.Cli.exe",true);}catch(ArgumentException){continue;}if(release==null||System.Version.Parse(GitHubReleasePolicy.Version(candidate.tag_name))>System.Version.Parse(GitHubReleasePolicy.Version(release.tag_name)))release=candidate;}}
+            if(preview){var candidates=Core.Parse<GitHubRelease[]>(json);release=null;foreach(var candidate in candidates??new GitHubRelease[0]){if(candidate.draft || (previewOnly && !candidate.prerelease))continue;try{GitHubReleasePolicy.Asset(candidate,"FishTank.exe",true);GitHubReleasePolicy.Asset(candidate,"FishTank.Cli.exe",true);}catch(ArgumentException){continue;}if(release==null||System.Version.Parse(GitHubReleasePolicy.Version(candidate.tag_name))>System.Version.Parse(GitHubReleasePolicy.Version(release.tag_name)))release=candidate;}}
             else release=Core.Parse<GitHubRelease>(json);
+            if (release == null) throw new IOException(preview ? "No eligible published preview release with both executable digests was found." : "No eligible published stable release was found.");
             GitHubReleasePolicy.Asset(release, "FishTank.exe",preview); GitHubReleasePolicy.Asset(release, "FishTank.Cli.exe",preview);
             return release;
+        }
+    }
+    internal static GitHubRelease Release(long id)
+    {
+        if (id <= 0) throw new ArgumentException("Invalid release identity.");
+        using (var response = Open(new Uri("https://api.github.com/repos/" + GitHubReleasePolicy.Repository + "/releases/" + id)))
+        using (var data = new MemoryStream()) {
+            if (response.StatusCode != HttpStatusCode.OK) throw new IOException("GitHub release recheck failed.");
+            using (var input = response.GetResponseStream()) TransferLimits.CopyBounded(input, data, 1024 * 1024);
+            return Core.Parse<GitHubRelease>(Encoding.UTF8.GetString(data.ToArray()));
         }
     }
     public static string Check()
@@ -61,7 +76,7 @@ public static class GitHubUpdates
         AppActivity.Record("Updates", "GitHub selected-channel release metadata checked; installation is separate.");
         var installed = typeof(GitHubUpdates).Assembly.GetName().Version;
         if (System.Version.Parse(version) <= installed) return "The selected channel's release is " + version + ". No newer eligible release was found for installed version " + installed + ".";
-        return "GitHub advertises release " + version + " from " + GitHubReleasePolicy.Repository + ". It has NOT been verified yet. Download and verify checks both executables against GitHub digests and your trusted publisher pin before an installation can be offered.";
+        return "GitHub advertises release " + version + " from " + GitHubReleasePolicy.Repository + ". It has NOT been verified yet. Download and verify checks both executables against GitHub digests and the selected update verification mode before installation. Preview mode does not verify a Windows publisher.";
     }
     private static void Download(GitHubAsset asset, string destination)
     {
@@ -86,8 +101,10 @@ public static class GitHubUpdates
         {
             var channel=UpdateChannelPreferences.Load();if(channel.StageNotBeforeUtc>DateTime.UtcNow)throw new InvalidOperationException("Update staging is deferred until "+channel.StageNotBeforeUtc.ToLocalTime().ToString("g")+". Change the staging window to proceed sooner.");
             var preferences = SecurityPreferences.Load();
-            if (string.IsNullOrEmpty(preferences.PublisherCertificateSha256)) throw new InvalidOperationException("Set an independently verified publisher certificate SHA-256 pin in security preferences first. Unsigned previews cannot be installed as trusted updates.");
             var release = Latest(); string version = GitHubReleasePolicy.Version(release.tag_name);
+            bool preview = release.prerelease && GitHubPreviewUpdates.Allowed(channel);
+            if (preview) GitHubPreviewUpdates.ValidateRelease(release, channel);
+            else if (string.IsNullOrEmpty(preferences.PublisherCertificateSha256)) throw new InvalidOperationException("Configure publisher trust for signed releases, or explicitly enable preview updates for unsigned prereleases.");
             AppActivity.Record("Updates", "GitHub selected-channel release metadata checked; installation is separate.");
             UpdateVersionPolicy.RequireNewer(version, typeof(GitHubUpdates).Assembly.GetName().Version.ToString(), preferences.HighestStagedVersion);
             var staged = new System.Collections.Generic.List<StagedExecutable>();
@@ -95,12 +112,12 @@ public static class GitHubUpdates
             {
                 var asset = GitHubReleasePolicy.Asset(release, name, channel.Channel == "Preview");
                 string temp = System.IO.Path.Combine(Core.Data, "github-download-" + Guid.NewGuid().ToString("N") + ".exe");
-                try { Download(asset, temp); staged.Add(TrustedDownloads.StageCore(temp, asset.digest.Substring(7), version, name)); }
+                try { Download(asset, temp); staged.Add(preview ? GitHubPreviewUpdates.Stage(temp, asset, version) : TrustedDownloads.StageCore(temp, asset.digest.Substring(7), version, name)); }
                 finally { if (File.Exists(temp)) File.Delete(temp); }
             }
-            AppActivity.Record("Updates", "GitHub release executables verified and staged; not installed.");
-            ProtectedStore.Write("pending-github-update", new PendingGitHubUpdate { ReleaseId = release.id, Version = version, Files = staged.ToArray() });
-            return "Both GitHub release executables passed checksum, publisher and version verification for " + version + ". They are staged; use Settings → GitHub updates → Apply update to close FishTank, replace only its executables, keep rollback copies and restart. User data is not replaced.";
+            AppActivity.Record("Updates", preview ? "Unsigned GitHub preview digest/identity/version checks passed; publisher was not verified; staged, not installed." : "GitHub release executables verified and staged; not installed.");
+            ProtectedStore.Write("pending-github-update", new PendingGitHubUpdate { ReleaseId = release.id, Version = version, Files = staged.ToArray(), TrustMode = preview ? GitHubPreviewUpdates.Mode : "Publisher", Repository = GitHubReleasePolicy.Repository, ReleaseTag = release.tag_name });
+            return (preview ? "Unsigned GitHub preview: both executables passed GitHub checksum, identity and version checks; Windows publisher was NOT verified. Version " : "Both GitHub release executables passed checksum, publisher and version verification for ") + version + ". They are staged; use Settings → GitHub updates → Apply update to close FishTank, replace only its executables, keep rollback copies and restart. User data is not replaced.";
         }
     }
     internal static PendingGitHubUpdate Pending() => ProtectedStore.Read<PendingGitHubUpdate>("pending-github-update", () => null);

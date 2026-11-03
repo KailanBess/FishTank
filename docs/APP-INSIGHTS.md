@@ -35,3 +35,7 @@ Mascot bubbles start at the barrel opening within the displayed image rectangle,
 Open **Settings → GitHub updates** (also searchable in All tools). The dedicated screen shows the installed version, channel, publisher-trust readiness and staged version. **Check GitHub release** contacts GitHub only after being clicked; **Download and verify** stages both executables; **Apply update** separately confirms replacement/restart and repeats digest, signature, publisher and newer-version checks. Applying is disabled without a complete staged update and configured publisher trust. Publisher trust settings, release channel, the release page and previous installation result are available on the same screen.
 
 Source commits and preview ZIPs are not published releases. At validation time the public repository had no releases. Unsigned preview executables cannot pass the trusted-update gate; use the downloadable ZIP until signed releases and publisher trust are configured. No existing update verification was relaxed.
+
+## Easy preview updates (0.15.4)
+
+Settings → GitHub updates → Use preview updates offers certificate-free prerelease updates after one explicit opt-in. New versions publish automatically after required CI checks pass. GitHub identities/digests, newer-version rules, staging isolation, pre-apply rechecks and rollback remain required. Signed releases still require publisher trust. See PREVIEW-UPDATES.md; this supersedes the signed-only limitation described for 0.15.3 above.

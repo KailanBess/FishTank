@@ -74,6 +74,9 @@ jobs:
       - name: Package unsigned preview
         shell: pwsh
         run: ./scripts/Package-Preview.ps1 -NoBuild
+      - name: Verify preview release preparation and malformed archive rejection
+        shell: pwsh
+        run: ./tests/Test-PreviewRelease.ps1
       - name: Save unsigned Windows builds
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -132,3 +135,26 @@ jobs:
         with:
           name: FishTank-dependencies
           path: packages/FishTank-sbom.json
+
+  preview-release:
+    name: Publish tested preview update
+    needs: [windows, browser-ui, server-and-source]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'KailanBess/FishTank'
+    runs-on: windows-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      actions: read
+    concurrency:
+      group: fishtank-preview-release
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Publish validated preview assets after all checks pass
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/Publish-Preview.ps1

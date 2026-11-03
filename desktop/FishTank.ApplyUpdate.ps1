@@ -15,15 +15,24 @@ function Ordinary([string]$Path){
 function Verify([string]$Path,$Expected){
  [void](Ordinary $Path)
  if((Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash -ne $Expected.Sha256){throw 'Update checksum mismatch.'}
+ if($plan.TrustMode -ne 'GitHubPreview'){
  $signature=Get-AuthenticodeSignature -LiteralPath $Path
  if($signature.Status -ne 'Valid' -or $null -eq $signature.SignerCertificate){throw 'Update publisher signature is not valid.'}
  $sha=[Security.Cryptography.SHA256]::Create()
  try{$pin=([BitConverter]::ToString($sha.ComputeHash($signature.SignerCertificate.RawData))).Replace('-','')}finally{$sha.Dispose()}
  if($pin -ne $Expected.PublisherPin){throw 'Update publisher certificate pin mismatch.'}
+ }
  $identity=[Reflection.AssemblyName]::GetAssemblyName($Path)
  if($identity.Name+'.exe' -ne $Expected.Name -or $identity.Version.ToString() -ne $plan.Version){throw 'Update assembly identity/version mismatch.'}
 }
 try{
+ if($plan.TrustMode -and $plan.TrustMode -notin @('Publisher','GitHubPreview')){throw 'Unknown update verification mode.'}
+ if($plan.TrustMode -eq 'GitHubPreview'){
+  if($plan.PreviewConsent -ne $true -or $plan.Repository -ne 'KailanBess/FishTank' -or $plan.ReleaseId -le 0 -or $plan.ReleaseTag -notmatch '\A(?:preview-)?v?[0-9]+\.[0-9]+(?:\.[0-9]+){0,2}\z'){throw 'Unsigned preview requires explicit consent and GitHub release provenance.'}
+  $numericTag=$plan.ReleaseTag -replace '^preview-','';$tagVersion=[Version]$numericTag.TrimStart('v');$normalized=[Version]::new($tagVersion.Major,$tagVersion.Minor,[Math]::Max(0,$tagVersion.Build),[Math]::Max(0,$tagVersion.Revision))
+  if($normalized -ne [Version]$plan.Version){throw 'Preview release tag/version mismatch.'}
+ }
+ if($plan.ProfileName -and $plan.ProfileName -notmatch '\A[A-Za-z0-9_-]{1,32}\z'){throw 'Invalid update restart profile.'}
  $target=Ordinary ([string]$plan.TargetDirectory)
  $separator=[IO.Path]::DirectorySeparatorChar
  $stageRoot=(Ordinary ([string]$plan.StageRoot)).TrimEnd($separator)+$separator
@@ -57,7 +66,7 @@ try{
   $completed+=$entry
   Verify $entry.Destination $entry.File
  }
- $status='Updated';$message='Both executables verified and installed. Previous executables are retained in '+$backupDirectory+'. User data and existing runtime configuration were not replaced.'
+ $status='Updated';$message=$(if($plan.TrustMode -eq 'GitHubPreview'){'Unsigned GitHub preview installed; Windows publisher was not verified. '}else{''})+'Both executables verified and installed. Previous executables are retained in '+$backupDirectory+'. User data and existing runtime configuration were not replaced.'
 }catch{
  $message='Update failed: '+$_.Exception.Message
  $rollbackFailed=$false
@@ -76,7 +85,7 @@ try{
 }
 if($status -eq 'Updated'){
  $desktop=Join-Path $plan.TargetDirectory 'FishTank.exe'
- try{Verify $desktop ($plan.Files | Where-Object Name -eq 'FishTank.exe');if($plan.Portable){Start-Process -FilePath $desktop -WorkingDirectory $plan.TargetDirectory -ArgumentList '--portable'}else{Start-Process -FilePath $desktop -WorkingDirectory $plan.TargetDirectory}}catch{}
+ try{Verify $desktop ($plan.Files | Where-Object Name -eq 'FishTank.exe');if($plan.ProfileName){Start-Process -FilePath $desktop -WorkingDirectory $plan.TargetDirectory -ArgumentList @('--profile',$plan.ProfileName)}elseif($plan.Portable){Start-Process -FilePath $desktop -WorkingDirectory $plan.TargetDirectory -ArgumentList '--portable'}else{Start-Process -FilePath $desktop -WorkingDirectory $plan.TargetDirectory}}catch{}
  exit 0
 }
 exit 1

@@ -29,7 +29,7 @@ The current implementation buffers bounded decrypted content while unlocked; mem
 Open **Security Center → Security and integrity tools → Downloads and updates**:
 
 1. **Check GitHub for updates** queries the fixed `KailanBess/FishTank` repository's public stable release API. Drafts and prereleases are excluded. A source commit or preview ZIP on `main` is not an installable release.
-2. **Download and verify GitHub update** downloads both `FishTank.exe` and `FishTank.Cli.exe`. Each must have valid GitHub asset identity/size/SHA-256 metadata, a valid Windows Authenticode signature matching your configured publisher certificate SHA-256 pin, the expected assembly identity, and the advertised newer version. Downgrades below the installed/staged version floor are refused. No access token or app credential is sent. GitHub redirects are limited to HTTPS on GitHub's known asset hosts.
+2. **Download and verify GitHub update** downloads both `FishTank.exe` and `FishTank.Cli.exe`. Each must have valid GitHub asset identity/size/SHA-256 metadata, the expected assembly identity and the advertised newer version. Signed mode additionally requires a valid Windows Authenticode signature matching your publisher pin. Explicitly enabled Preview mode accepts unsigned published prereleases with GitHub provenance checks; see PREVIEW-UPDATES.md. Downgrades below the installed/staged version floor are refused. No access token or app credential is sent. GitHub redirects are limited to HTTPS on GitHub's known asset hosts.
 3. **Install verified GitHub update** is a separate confirmed action. It refuses while tracked scans/vault/file operations run, locks open vaults, starts an embedded helper under the same Windows user, and closes FishTank. The helper rechecks paths, hashes, signatures, versions and current installed metadata; prepares replacement copies; waits for the original process; replaces only the two executables; verifies the result; retains old executable backups; records the result; and restarts the signed desktop app on success. Existing private data and runtime configuration are not replaced. Portable mode is preserved.
 4. **Last GitHub installation result** shows pending, updated, failed, or recovery-required status. Failed verification cannot produce a success record or restart. Caught replacement failures attempt rollback in reverse order; the old backups are retained. This is not a crash/power-loss-atomic transaction. If rollback or power-loss recovery is incomplete, use the retained executable backups before running again.
 
@@ -39,7 +39,7 @@ Optional startup checking is opt-in in **Locking and reminders** and only checks
 
 ### Activation still requires a real signed release
 
-The development preview is unsigned. No publisher certificate/private key is supplied or invented. Unsigned previews cannot pass the update gate, and an encountered certificate is never automatically trusted. Configure the publisher pin from an authenticated publisher source. A first signed update must have a higher assembly version than the installed preview (for example, 0.10.1.0 after the 0.10.0 preview).
+The development preview is unsigned. No publisher certificate/private key is supplied or invented. Unsigned previews cannot pass the signed-update gate, and an encountered certificate is never automatically trusted. Configure the publisher pin from an authenticated publisher source. A first signed update must have a higher assembly version than the installed preview (for example, 0.10.1.0 after the 0.10.0 preview).
 
 `.github/workflows/release.yml` prepares signed release publication after tests on a stable version tag or manual dispatch. In GitHub **Settings → Environments → release**, configure these securely:
 
@@ -59,4 +59,8 @@ Windows harnesses include native exclusive-handle moves, recovery verification, 
 
 ### Direct update screen (0.15.3)
 
-Use **Settings → GitHub updates** for the visible Check, Download and verify, and Apply update sequence. Opening the screen performs only local readiness checks. Apply remains disabled until publisher trust and a complete verified update are available. This also appears in All tools as GitHub updates. The older Downloads and updates tab remains available for file/publisher inspection and update results.
+Use **Settings → GitHub updates** for the visible Check, Download and verify, and Apply update sequence. Opening the screen performs only local readiness checks. Apply remains disabled until the selected verification mode is configured and a complete checked update is available. Preview mode needs one-time unsigned consent; signed mode needs publisher trust. This also appears in All tools as GitHub updates. The older Downloads and updates tab remains available for file/publisher inspection and update results.
+
+### Certificate-free previews (0.15.4)
+
+Settings → GitHub updates → Use preview updates enables the optional unsigned path. See PREVIEW-UPDATES.md for setup, verification and publishing. No certificate is required for this mode. Signed-update requirements remain separate.

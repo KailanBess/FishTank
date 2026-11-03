@@ -17,12 +17,15 @@ internal static class GitHubUpdateInstaller
         var pending = GitHubUpdates.Pending() ?? throw new InvalidOperationException("Download and verify a complete GitHub release first.");
         if (pending.Files == null || pending.Files.Length != 2) throw new IOException("Incomplete GitHub update plan.");
         var prefs = SecurityPreferences.Load();
+        bool preview = pending.TrustMode == GitHubPreviewUpdates.Mode;
+        if (!preview && pending.TrustMode != "Publisher") throw new IOException("Unknown update verification mode.");
+        if (preview) GitHubPreviewUpdates.ValidatePending(pending, GitHubUpdates.Release(pending.ReleaseId), UpdateChannelPreferences.Load());
         var files = pending.Files.Select(item => {
             if (item.Name != "FishTank.exe" && item.Name != "FishTank.Cli.exe") throw new IOException("Unexpected update component.");
-            string expected = Path.Combine(Core.Data, "verified-updates", pending.Version, item.Name);
+            string expected = Path.Combine(Core.Data, preview ? "github-preview-updates" : "verified-updates", pending.Version, item.Name);
             if (!string.Equals(Path.GetFullPath(item.Path), Path.GetFullPath(expected), StringComparison.OrdinalIgnoreCase)) throw new IOException("Update source path changed.");
-            var checkedFile = TrustedDownloads.StageCore(item.Path, item.Sha256, pending.Version, item.Name);
-            if (!DownloadChecksum.Matches(item.PublisherPin, prefs.PublisherCertificateSha256) || checkedFile.PublisherPin != item.PublisherPin) throw new IOException("Update publisher trust changed. Download and verify it again.");
+            var checkedFile = preview ? GitHubPreviewUpdates.Recheck(item, pending.Version) : TrustedDownloads.StageCore(item.Path, item.Sha256, pending.Version, item.Name);
+            if (!preview && (!DownloadChecksum.Matches(item.PublisherPin, prefs.PublisherCertificateSha256) || checkedFile.PublisherPin != item.PublisherPin)) throw new IOException("Update publisher trust changed. Download and verify it again.");
             string installed = Path.Combine(Core.Base, item.Name);
             string oldVersion = File.Exists(installed) ? AssemblyName.GetAssemblyName(installed).Version.ToString() : "";
             if (oldVersion != "") UpdateVersionPolicy.RequireNewer(pending.Version, oldVersion, prefs.HighestStagedVersion);
@@ -31,7 +34,7 @@ internal static class GitHubUpdateInstaller
         string resultPath = Path.Combine(Core.Data, "github-update-result.json");
         using (var process = Process.GetCurrentProcess())
         {
-            var plan = new { pending.Version, Files = files, TargetDirectory = Core.Base.TrimEnd(Path.DirectorySeparatorChar), StageRoot = Path.Combine(Core.Data, "verified-updates"),
+            var plan = new { pending.Version, pending.TrustMode, pending.Repository, pending.ReleaseId, pending.ReleaseTag, PreviewConsent = preview, ProfileName = Program.ActiveProfileName, Files = files, TargetDirectory = Core.Base.TrimEnd(Path.DirectorySeparatorChar), StageRoot = Path.Combine(Core.Data, preview ? "github-preview-updates" : "verified-updates"),
                 ParentPid = process.Id, ParentStartTicks = process.StartTime.ToUniversalTime().Ticks, ResultPath = resultPath,
                 Portable = string.Equals(Path.GetFullPath(Core.Data), Path.Combine(Core.Base, "data"), StringComparison.OrdinalIgnoreCase) };
             string script;
