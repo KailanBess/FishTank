@@ -16,6 +16,9 @@ public sealed class Appearance
 
 	public string Theme = "Dark";
 
+    public string WindowFrameMode = "Follow Windows";
+    public string WindowFrameColor = "#247A9E";
+
 	public string Accent = "Cyan";
 
 	public string IconColor = "Original";
@@ -132,10 +135,12 @@ public sealed class Appearance
 		{
 			throw new InvalidDataException("Invalid cosmetic range");
 		}
-		string[] array = new string[12]
+		Allowed(WindowFrameMode, new[] { "Follow Windows", "Custom color" });
+        if (string.IsNullOrEmpty(WindowFrameColor)) throw new InvalidDataException("Choose a window frame color.");
+        string[] array = new string[13]
 		{
 			TextColor, MutedColor, TopColor, BottomColor, SurfaceColor, AccentColor, SecondaryColor, SelectionColor, FocusColor, ReadyColor,
-			RunningColor, WarningColor
+			RunningColor, WarningColor, WindowFrameColor
 		};
 		foreach (string text in array)
 		{

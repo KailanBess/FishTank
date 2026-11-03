@@ -50,15 +50,15 @@ internal sealed class BubbleOverlay : Form
         Rectangle screen = Screen.FromPoint(origin).Bounds;
         if (Bounds != screen) HideAndClear();
         Bounds = screen;
-        int count = random.Next(8, 15);
-        for (int i = 0; i < count && bubbles.Count < 120; i++)
+        int count = random.Next(3, 7);
+        for (int i = 0; i < count && bubbles.Count < 40; i++)
         {
             bubbles.Add(new Bubble
             {
                 X = origin.X - Left + Between(-9, 9),
                 Y = origin.Y - Top + Between(-7, 7),
-                VX = Between(-0.6f, 0.6f), VY = Between(-3.8f, -1.8f),
-                Radius = Between(4, 10), Phase = Between(0, (float)Math.PI * 2),
+                VX = (random.Next(2) == 0 ? -1 : 1) * Between(1.4f, 3.2f), VY = Between(-3.8f, -1.8f),
+                Radius = Between(2.5f, 5), Phase = Between(0, (float)Math.PI * 2),
                 Sway = Between(0.25f, 0.8f), Color = color
             });
         }
@@ -80,6 +80,7 @@ internal sealed class BubbleOverlay : Form
             bubble.Phase += 0.08f;
             bubble.X += bubble.VX + (float)Math.Sin(bubble.Phase) * bubble.Sway;
             bubble.Y += bubble.VY;
+            bubble.VX *= 0.985f;
             bubble.VY = Math.Max(-5.5f, bubble.VY - 0.015f);
             // Keep the entire circle visible at the sides until it passes the screen top.
             bubble.X = Math.Max(bubble.Radius + 3, Math.Min(Width - bubble.Radius - 3, bubble.X));
@@ -104,13 +105,13 @@ internal sealed class BubbleOverlay : Form
         {
             var circle = new RectangleF(bubble.X - bubble.Radius, bubble.Y - bubble.Radius,
                 bubble.Radius * 2, bubble.Radius * 2);
-            using var contrast = new Pen(Color.FromArgb(35, 65, 85), 4.5f);
-            using var rim = new Pen(bubble.Color, 2.5f);
-            using var highlight = new Pen(Color.White, 1.8f);
+            using var contrast = new Pen(Color.FromArgb(35, 65, 85), 3f);
+            using var rim = new Pen(bubble.Color, 1.6f);
+            using var highlight = new Pen(Color.White, 1.2f);
             e.Graphics.DrawEllipse(contrast, circle);
             e.Graphics.DrawEllipse(rim, circle);
-            e.Graphics.DrawArc(highlight, circle.X + 2, circle.Y + 2,
-                circle.Width - 4, circle.Height - 4, 200, 75);
+            e.Graphics.DrawArc(highlight, circle.X + 1.5f, circle.Y + 1.5f,
+                circle.Width - 3, circle.Height - 3, 200, 75);
         }
     }
 

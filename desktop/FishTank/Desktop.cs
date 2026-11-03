@@ -417,6 +417,8 @@ public sealed partial class Desktop : Form
 
 	private void BuildShell()
 	{
+        WindowFrame.SetAppearance(appearance);
+        WindowFrame.Attach(this);
 		SuspendLayout();
 		foreach (Control item in new List<Control>(ControlsToList(base.Controls)))
 		{
@@ -689,6 +691,7 @@ public sealed partial class Desktop : Form
 				ownedIcon = (Icon)icon2.Clone();
 			}
 			base.Icon = ownedIcon;
+            WindowFrame.SetIcon(ownedIcon);
 			icon?.Dispose();
 		}
 		finally

@@ -34,7 +34,7 @@ internal static class Program
                 host.Controls.Add(tank);
                 host.Show();
                 tank.Shoot();
-                Check(tank.BubbleCount >= 8 && tank.BubbleCount <= 14, "Click burst count outside randomized range");
+                Check(tank.BubbleCount >= 3 && tank.BubbleCount <= 6, "Click burst count outside randomized range");
                 var overlay = (Form)typeof(BubbleTank).GetField("overlay", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(tank);
                 Check(overlay.Bounds == Screen.FromControl(tank).Bounds, "Bubbles remain clipped to tank or parent");
                 Check(overlay.Owner == host && !overlay.ShowInTaskbar, "Bubble overlay ownership is incorrect");

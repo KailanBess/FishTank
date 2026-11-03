@@ -246,6 +246,20 @@ public sealed class AppearanceDialog : Form
 		tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 105f));
 		tableLayoutPanel.Controls.Add(sample, 0, row);
 		tableLayoutPanel.SetColumnSpan(sample, 2);
+        var frameChoices = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        var followWindows = new RadioButton { Text = "Follow Windows", AutoSize = true, Checked = Value.WindowFrameMode == "Follow Windows", AccessibleName = "Window frame: Follow Windows" };
+        var customFrame = new RadioButton { Text = "Custom color", AutoSize = true, Checked = Value.WindowFrameMode == "Custom color", AccessibleName = "Window frame: Custom color" };
+        frameChoices.Controls.Add(followWindows); frameChoices.Controls.Add(customFrame);
+        var frameColor = ActionButton("Choose color · " + Value.WindowFrameColor, delegate {
+            using (var picker = new ColorDialog { Color = ColorTranslator.FromHtml(Value.WindowFrameColor), FullOpen = true })
+                if (picker.ShowDialog(this) == DialogResult.OK) { Value.WindowFrameColor = "#" + picker.Color.R.ToString("X2") + picker.Color.G.ToString("X2") + picker.Color.B.ToString("X2"); BuildTabs(); Changed(); }
+        });
+        frameColor.Enabled = customFrame.Checked;
+        followWindows.CheckedChanged += delegate { if (followWindows.Checked) { Value.WindowFrameMode = "Follow Windows"; frameColor.Enabled = false; Changed(); } };
+        customFrame.CheckedChanged += delegate { if (customFrame.Checked) { Value.WindowFrameMode = "Custom color"; frameColor.Enabled = true; Changed(); } };
+        Row(tableLayoutPanel, "Outside window / title bar", frameChoices, 82);
+        Row(tableLayoutPanel, "Custom window color", frameColor, 55);
+        Paragraph(tableLayoutPanel, "Window colors are separate from the app theme below. Follow Windows uses your PC's light/dark and title-bar accent settings. Custom title-bar/border colors require Windows 11; Windows 10 keeps its native frame. High Contrast takes priority.", 112);
 		Choice(tableLayoutPanel, "Theme", Value.Theme, Appearance.Themes, delegate(string v)
 		{
 			Value.Theme = v;

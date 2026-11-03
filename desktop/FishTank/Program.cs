@@ -15,6 +15,7 @@ public static class Program
             if (args.Length == 1 && args[0] == "--demo")
             {
                 Application.EnableVisualStyles(); Application.SetCompatibleTextRenderingDefault(false);
+                WindowFrame.SetAppearance(new Appearance());
                 using (var demo = new DemoDialog()) Application.Run(demo);
                 return 0;
             }
@@ -42,7 +43,8 @@ public static class Program
 			{
 				Application.EnableVisualStyles();
 				Application.SetCompatibleTextRenderingDefault(defaultValue: false);
-				SimpleExplanations.Install();
+				WindowFrame.SetAppearance(AppearanceStore.Load());
+                SimpleExplanations.Install();
 				bool returnToSignIn;
 				do
 				{
