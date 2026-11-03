@@ -42,6 +42,14 @@ internal static class ToolCatalog
 {
     internal static readonly ToolDefinition[] All = {
         new ToolDefinition("search","Search all tools","global command palette favorites recent"),
+        new ToolDefinition("ransomware","Ransomware protection center","controlled folder access CFA blocked writes recovery audit"),
+        new ToolDefinition("asr","Attack surface reduction","ASR audit first prerequisites rules enforcement"),
+        new ToolDefinition("appcontrol","Application control review","Smart App Control AppLocker code integrity unsigned publisher"),
+        new ToolDefinition("hardware","Hardware security review","Secure Boot TPM VBS memory integrity vulnerable drivers"),
+        new ToolDefinition("software","Software updates inventory","installed versions WinGet available updates freshness"),
+        new ToolDefinition("persistence","Persistence monitoring","startup services scheduled tasks WMI changes"),
+        new ToolDefinition("exposure","Network exposure monitor","listeners ports firewall remote access changes"),
+        new ToolDefinition("incident","Incident response workspace","timeline preserve evidence hash containment recovery case"),
         new ToolDefinition("changes","Security changes","compare previous current recorded protection checks history"),
         new ToolDefinition("cleanup","Storage cleanup preview","old temporary downloads selective removal space"),
         new ToolDefinition("transfer","Portable profile transfer","export import preview migrate PC reenroll vault appearance"),

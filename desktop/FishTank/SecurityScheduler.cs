@@ -31,6 +31,9 @@ internal sealed class SecurityScheduler : IDisposable
         {
             var prefs = SecurityPreferences.Load();
             var now = DateTime.UtcNow;
+            if (!(deferScan?.Invoke() ?? false))
+                foreach (var coverage in await Task.Run(() => CoverageMonitor.Tick()))
+                    if (!disposed) notify(coverage);
             var workspace=WorkspacePreferences.Load();
             if(workspace.AutoDeleteAuditHistory&&now-workspace.LastHistoryCleanupUtc>=TimeSpan.FromDays(1))
             {

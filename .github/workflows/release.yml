@@ -42,6 +42,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           ./tests/Check-PowerShell.ps1
           ./tests/Test-Collectors.ps1
+          ./tests/Test-Coverage.ps1
       - name: Isolated-profile resilience checks
         shell: pwsh
         run: |

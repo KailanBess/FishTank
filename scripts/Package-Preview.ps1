@@ -16,6 +16,7 @@ try{
   'docs/EXPANSION-DESIGN.md',
   'docs/APP-EXPANSION.md',
   'docs/EVERYDAY-TOOLS.md',
+  'docs/SECURITY-COVERAGE.md',
   'docs/EVERYDAY-VALIDATION.md',
   'docs/EXPANSION-VALIDATION.md',
   'docs/SERVER-EXPANSION.md',

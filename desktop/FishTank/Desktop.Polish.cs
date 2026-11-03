@@ -15,6 +15,8 @@ public static class NotificationDestination
     {
         message = (message ?? "").ToLowerInvariant();
         if (message.Contains("release notes")) return "ReleaseNotes";
+        if (message.Contains("persistence monitoring")) return "PersistenceCoverage";
+        if (message.Contains("network monitoring")) return "NetworkCoverage";
         return message.Contains("backup") ? "Recovery" : message.Contains("disk health") ? "Disk" : message.Contains("folder integrity") ? "Integrity" : message.Contains("scan") ? "Scan" : message.Contains("github") ? "Updates" : "Security";
     }
 }
@@ -52,6 +54,8 @@ public sealed partial class Desktop
         switch (notificationTarget)
         {
             case "ReleaseNotes": OpenWhatsNew(); break;
+            case "PersistenceCoverage": OpenPersistenceMonitor(); break;
+            case "NetworkCoverage": OpenExposureMonitor(); break;
             case "Monitoring": Navigate("Real-time monitoring"); using (var history = new LiveDetectionDialog(liveDetection, palette, appearance.AdvancedMode)) history.ShowDialog(this); break;
             case "Recovery": OpenRecoveryCenter(); break;
             case "Disk": OpenToolsTab("Security reviews"); break;

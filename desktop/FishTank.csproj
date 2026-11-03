@@ -22,6 +22,7 @@
     <RootNamespace />
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="FishTank.Coverage.ps1" LogicalName="FishTank.Coverage.ps1" />
     <EmbeddedResource Include="Browser/index.html" LogicalName="FishTank.Browser.index.html" />
     <EmbeddedResource Include="Browser/app.js" LogicalName="FishTank.Browser.app.js" />
     <EmbeddedResource Include="Browser/app.css" LogicalName="FishTank.Browser.app.css" />

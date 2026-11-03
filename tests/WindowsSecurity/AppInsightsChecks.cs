@@ -8,6 +8,8 @@ internal static class AppInsightsChecks
 {
     internal static void Run(Action<bool, string> check)
     {
+        var hardware = CoverageCollector.Capture("Hardware");
+        check(hardware.Category == "Hardware" && hardware.Items.Any(x => x.Name == "Secure Boot runtime") && hardware.Items.Any(x => x.Name == "TPM readiness"), "Embedded coverage resource did not bind its category");
         var now = new DateTime(2026, 11, 2, 16, 0, 0, DateTimeKind.Utc);
         var schedule = new ScanSchedule { Enabled = true, MinuteOfDay = 15 * 60, IntervalDays = 1 };
         check(schedule.NextAfter(now, TimeZoneInfo.Utc) == now.Date.AddDays(1).AddHours(15), "Daily schedule next occurrence");

@@ -25,6 +25,9 @@ jobs:
       - name: Check collector interpretation with fixtures
         shell: powershell
         run: ./tests/Test-Collectors.ps1
+      - name: Check security coverage and audit-first changes with mocks
+        shell: powershell
+        run: ./tests/Test-Coverage.ps1
       - name: Build Windows security checks
         run: dotnet build tests/WindowsSecurity/WindowsSecurity.csproj -c Release
       - name: Exercise authentication, encrypted backups and Windows collectors
