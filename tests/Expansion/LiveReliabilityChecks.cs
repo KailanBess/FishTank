@@ -30,7 +30,7 @@ internal static class LiveReliabilityChecks
         public LiveReplayBatch Read(LiveEventCursor cursor, int limit) { if (ReadFails) throw new IOException("fixture"); return Replay(cursor); }
     }
     private static readonly DateTime Epoch = new DateTime(2026, 11, 2, 12, 0, 0, DateTimeKind.Utc);
-    private static LiveDetectionEvent Event(long record, int id = 1116) => new LiveDetectionEvent { RecordId = record, EventId = id, EventUtc = Epoch.AddSeconds(record), Details = "Fixture metadata" };
+    private static LiveDetectionEvent Event(long record, int id = 1116) => new LiveDetectionEvent { RecordId = record, EventId = id, EventUtc = Epoch.AddSeconds(record).AddTicks(1234), Details = "Fixture metadata" };
     private static LiveEventCursor Cursor(LiveDetectionEvent item) => new LiveEventCursor { RecordId = item.RecordId, EventId = item.EventId, EventUtc = item.EventUtc };
     private static LiveProtectionReading Good() => new LiveProtectionReading { AntivirusEnabled = true, RealTimeProtectionEnabled = true, Mode = "Normal", ServiceEnabled = true, BehaviorMonitorEnabled = true, IoavProtectionEnabled = true, NisEnabled = true, TamperProtected = true, SignatureAgeDays = 0 };
     private static void Cycle(LiveDetectionSession session) { if (!session.CheckNowAsync().Wait(5000)) throw new Exception("Live cycle fixture timed out"); }
@@ -58,9 +58,9 @@ internal static class LiveReliabilityChecks
             source.Receive(Event(5, 1122)); check(notices.Last().Severity != 2, "Audit notice became urgent threat");
             session.Stop(); source.Receive(Event(98)); check(!session.Events().Any(x => x.RecordId == 98), "Stopped session accepted callback");
         }
-        var resumedSource = new Source(); long resumedFrom = -1;
-        resumedSource.Replay = cursor => { resumedFrom = cursor.RecordId; return new LiveReplayBatch { Cursor = Cursor(Event(6)), Events = new List<LiveDetectionEvent> { Event(5, 1122), Event(6) }, CaughtUp = true }; };
-        using (var session = new LiveDetectionSession(null, resumedSource, Good, () => now, store)) { session.Start(); Cycle(session); check(resumedFrom == 4 && session.Events().Count(x => x.RecordId == 5) == 1 && session.Events().Any(x => x.RecordId == 6 && x.Recovered), "Restart checkpoint recovery/dedup failed"); }
+        var resumedSource = new Source(); long resumedFrom = -1, resumedTicks = -1;
+        resumedSource.Replay = cursor => { resumedFrom = cursor.RecordId; resumedTicks = cursor.EventUtc.Ticks; return new LiveReplayBatch { Cursor = Cursor(Event(6)), Events = new List<LiveDetectionEvent> { Event(5, 1122), Event(6) }, CaughtUp = true }; };
+        using (var session = new LiveDetectionSession(null, resumedSource, Good, () => now, store)) { session.Start(); Cycle(session); check(resumedTicks == Event(4).EventUtc.Ticks && store.Value.Cursor.EventUtcTicks == Event(6).EventUtc.Ticks, "Submillisecond checkpoint identity lost in JSON round trip"); check(session.Events().Single(x => x.RecordId == 5).EventUtc.Ticks == Event(5).EventUtc.Ticks, "Source timestamp precision lost on restart"); check(resumedFrom == 4 && session.Events().Count(x => x.RecordId == 5) == 1 && session.Events().Any(x => x.RecordId == 6 && x.Recovered), "Restart checkpoint recovery/dedup failed"); }
 
         source = new Source { FailDuringSubscribe = true }; store = new Store();
         using (var session = new LiveDetectionSession(null, source, Good, () => now, store)) { session.Start(); Cycle(session); check(session.Status.Contains("Coverage gap"), "Synchronous subscription failure overwritten by success"); }

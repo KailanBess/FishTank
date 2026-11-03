@@ -59,17 +59,17 @@ internal sealed class LiveSessionEngine : IDisposable
             if (checkpoint == null || checkpoint.Version != 1 || checkpoint.Cursor == null || checkpoint.Events == null || checkpoint.Events.Count > 5000) throw new IOException("Invalid live checkpoint.");
             ValidateCursor(checkpoint.Cursor);
             if (checkpoint.Captured < 0 || checkpoint.Trimmed < 0) throw new IOException("Invalid checkpoint counters.");
-            foreach (var item in checkpoint.Events) Validate(item);
+            foreach (var item in checkpoint.Events) { Validate(item); if (item.SourceUtcTicks > 0) item.EventUtc = new DateTime(item.SourceUtcTicks, DateTimeKind.Utc); }
             history.Restore(checkpoint.Events); cursor = Clone(checkpoint.Cursor); captured = checkpoint.Captured; previousTrimmed = checkpoint.Trimmed;
         } catch {
             storageBlocked = true; storageError = "Checkpoint/history could not be read. Existing data was preserved; saving is blocked until storage is repaired and monitoring restarted.";
             Add(new LiveDetectionEvent { Kind = "Coverage gap", Severity = 1, Summary = storageError }, false);
         }
     }
-    private static LiveEventCursor Clone(LiveEventCursor value) => new LiveEventCursor { RecordId = value.RecordId, EventId = value.EventId, EventUtc = value.EventUtc };
+    private static LiveEventCursor Clone(LiveEventCursor value) => new LiveEventCursor { RecordId = value.RecordId, EventId = value.EventId, EventUtc = value.EventUtcTicks > 0 ? new DateTime(value.EventUtcTicks, DateTimeKind.Utc) : value.EventUtc, EventUtcTicks = value.EventUtcTicks > 0 ? value.EventUtcTicks : value.EventUtc.Ticks };
     private static void ValidateCursor(LiveEventCursor value)
     {
-        if (value == null || value.RecordId < 0 || (value.RecordId > 0 && (value.EventId <= 0 || value.EventUtc == DateTime.MinValue))) throw new IOException("Invalid log anchor.");
+        if (value == null || value.RecordId < 0 || value.EventUtcTicks < 0 || value.EventUtcTicks > DateTime.MaxValue.Ticks || (value.RecordId > 0 && (value.EventId <= 0 || value.EventUtc == DateTime.MinValue))) throw new IOException("Invalid log anchor.");
     }
     private static void ValidateBatch(LiveReplayBatch batch, LiveEventCursor from)
     {
@@ -86,7 +86,7 @@ internal sealed class LiveSessionEngine : IDisposable
     }
     private static void Validate(LiveDetectionEvent item)
     {
-        if (item == null || (item.Kind ?? "").Length > 160 || (item.Summary ?? "").Length > 4000 || (item.Details ?? "").Length > 10000) throw new IOException("Invalid live event size.");
+        if (item == null || item.SourceUtcTicks < 0 || item.SourceUtcTicks > DateTime.MaxValue.Ticks || (item.Kind ?? "").Length > 160 || (item.Summary ?? "").Length > 4000 || (item.Details ?? "").Length > 10000) throw new IOException("Invalid live event size.");
     }
     internal string Status
     {
@@ -140,7 +140,7 @@ internal sealed class LiveSessionEngine : IDisposable
         Validate(input);
         if (LiveDetectionPolicy.Kind(input.EventId) == null) return false;
         if (input.RecordId <= 0 || input.EventUtc == DateTime.MinValue) throw new IOException("Source event identity is unavailable.");
-        var item = new LiveDetectionEvent { RecordedUtc = clock(), EventUtc = input.EventUtc, RecordId = input.RecordId, EventId = input.EventId,
+        var item = new LiveDetectionEvent { RecordedUtc = clock(), EventUtc = input.SourceUtcTicks > 0 ? new DateTime(input.SourceUtcTicks, DateTimeKind.Utc) : input.EventUtc, SourceUtcTicks = input.SourceUtcTicks > 0 ? input.SourceUtcTicks : input.EventUtc.Ticks, RecordId = input.RecordId, EventId = input.EventId,
             Kind = LiveDetectionPolicy.Kind(input.EventId), Summary = LiveDetectionPolicy.Summary(input.EventId), Details = input.Details, Recovered = recovered, Severity = LiveDetectionPolicy.Severity(input.EventId) };
         if (!history.Add(item)) return false;
         captured++; revision++;

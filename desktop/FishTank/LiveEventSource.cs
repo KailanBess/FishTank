@@ -9,6 +9,7 @@ public sealed class LiveEventCursor
     public long RecordId;
     public int EventId;
     public DateTime EventUtc;
+    public long EventUtcTicks;
 }
 internal sealed class LiveReplayBatch
 {
@@ -29,7 +30,8 @@ internal sealed class WindowsLiveEventSource : ILiveEventSource
     private static LiveEventCursor Identity(EventRecord record)
     {
         if (record.RecordId == null || record.RecordId <= 0 || record.TimeCreated == null) throw new InvalidOperationException("Source event identity is unavailable.");
-        return new LiveEventCursor { RecordId = record.RecordId.Value, EventId = record.Id, EventUtc = record.TimeCreated.Value.ToUniversalTime() };
+        var utc = record.TimeCreated.Value.ToUniversalTime();
+        return new LiveEventCursor { RecordId = record.RecordId.Value, EventId = record.Id, EventUtc = utc, EventUtcTicks = utc.Ticks };
     }
     private static LiveEventCursor Edge(bool reverse)
     {
@@ -40,14 +42,14 @@ internal sealed class WindowsLiveEventSource : ILiveEventSource
     {
         if (cursor == null || cursor.RecordId <= 0) return true;
         using (var reader = new EventLogReader(new EventLogQuery(Channel, PathType.LogName, "*[System[EventRecordID=" + cursor.RecordId + "]]")))
-        using (var record = reader.ReadEvent()) return record != null && record.Id == cursor.EventId && record.TimeCreated?.ToUniversalTime() == cursor.EventUtc;
+        using (var record = reader.ReadEvent()) return record != null && record.Id == cursor.EventId && record.TimeCreated?.ToUniversalTime().Ticks == (cursor.EventUtcTicks > 0 ? cursor.EventUtcTicks : cursor.EventUtc.Ticks);
     }
     private static LiveDetectionEvent Convert(EventRecord record, bool recovered)
     {
         if (record.ProviderName != "Microsoft-Windows-Windows Defender") return null;
         string kind = LiveDetectionPolicy.Kind(record.Id); if (kind == null) return null;
         var identity = Identity(record);
-        return new LiveDetectionEvent { EventId = record.Id, RecordId = identity.RecordId, EventUtc = identity.EventUtc,
+        return new LiveDetectionEvent { EventId = record.Id, RecordId = identity.RecordId, EventUtc = identity.EventUtc, SourceUtcTicks = identity.EventUtcTicks,
             Kind = kind, Summary = LiveDetectionPolicy.Summary(record.Id), Details = LiveDetectionDetails.Read(record.ToXml()), Recovered = recovered };
     }
     public IDisposable Subscribe(Action<LiveDetectionEvent> receive, Action<string> failed)

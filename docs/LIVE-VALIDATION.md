@@ -5,12 +5,12 @@ This release adds deterministic recovery/accuracy regression tests; it does not 
 ## Verified locally
 
 - Desktop source compiles with .NET Framework reference assemblies.
-- 135 Expansion assertions pass (70 new live reliability assertions plus the existing 65), including 200 existing CSV fuzz inputs.
+- 137 Expansion assertions pass (72 new live reliability assertions plus the existing 65), including 200 existing CSV fuzz inputs.
 - 132 portable policy assertions pass, covering missing/stale/passive/off protection, event interpretation, deduplication and safe XML parsing.
 - 30 mocked collector assertions pass, including optional component flags, signature age/version, unavailable status and false/null values.
 - 3,723 Windows UI assertions pass; all 12 embedded/build PowerShell scripts parse.
 
-Live tests cover checkpoint restart recovery; watcher/replay deduplication; callback reordering; delivery failure/replacement; synchronous subscription failure; stopped/disposed callbacks; corrupt-store preservation; write failure/retry; events during persistence; reset recovery; rejected unexplained rewind; whole-batch prevalidation; incomplete backfill; old healthy results crossing protection-disable events; stop/restart races; failed queries; history count/byte caps; trim counters; external record mutation; expanded severity; missing/disabled components; stale signatures; notification burst summaries; query-start freshness and clock rollback.
+Live tests cover checkpoint restart recovery including submillisecond timestamps through JSON persistence; watcher/replay deduplication; callback reordering; delivery failure/replacement; synchronous subscription failure; stopped/disposed callbacks; corrupt-store preservation; write failure/retry; events during persistence; reset recovery; rejected unexplained rewind; whole-batch prevalidation; incomplete backfill; old healthy results crossing protection-disable events; stop/restart races; failed queries; history count/byte caps; trim counters; external record mutation; expanded severity; missing/disabled components; stale signatures; notification burst summaries; query-start freshness and clock rollback.
 
 Injected sources/readers/stores and explicit clocks avoid creating detections, changing Defender policy, installing malware samples or modifying the owner's profile. These tests do not measure engine efficacy.
 

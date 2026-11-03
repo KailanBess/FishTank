@@ -8,6 +8,7 @@ public sealed class LiveDetectionEvent
 {
     public DateTime RecordedUtc;
     public DateTime EventUtc;
+    public long SourceUtcTicks;
     public long RecordId;
     public int EventId;
     public string Kind;
@@ -115,7 +116,7 @@ public sealed class LiveDetectionBuffer
     public long Trimmed { get; private set; }
     public int Count { get { lock (gate) return items.Count; } }
     public LiveDetectionBuffer(int limit = 1000) { if (limit < 1 || limit > 5000) throw new ArgumentException("Invalid live history limit."); this.limit = limit; }
-    private static string Identity(LiveDetectionEvent item) => item.RecordId + ":" + item.EventId + ":" + item.EventUtc.Ticks;
+    private static string Identity(LiveDetectionEvent item) => item.RecordId + ":" + item.EventId + ":" + (item.SourceUtcTicks > 0 ? item.SourceUtcTicks : item.EventUtc.Ticks);
     public bool Add(LiveDetectionEvent item)
     {
         lock (gate)
@@ -128,11 +129,11 @@ public sealed class LiveDetectionBuffer
             Append(item); return true;
         }
     }
-    private void Append(LiveDetectionEvent item) { items.Add(new LiveDetectionEvent { RecordedUtc = item.RecordedUtc, EventUtc = item.EventUtc, RecordId = item.RecordId, EventId = item.EventId, Kind = item.Kind, Summary = item.Summary, Details = item.Details, Recovered = item.Recovered, Severity = item.Severity }); while (items.Count > limit) { items.RemoveAt(0); Trimmed++; } }
+    private void Append(LiveDetectionEvent item) { items.Add(new LiveDetectionEvent { RecordedUtc = item.RecordedUtc, EventUtc = item.EventUtc, SourceUtcTicks = item.SourceUtcTicks > 0 ? item.SourceUtcTicks : item.EventUtc.Ticks, RecordId = item.RecordId, EventId = item.EventId, Kind = item.Kind, Summary = item.Summary, Details = item.Details, Recovered = item.Recovered, Severity = item.Severity }); while (items.Count > limit) { items.RemoveAt(0); Trimmed++; } }
     public void TrimOldest(int count = 1) { lock (gate) { int remove = Math.Min(Math.Max(0, count), Math.Max(0, items.Count - 1)); items.RemoveRange(0, remove); Trimmed += remove; } }
     public void Restore(IEnumerable<LiveDetectionEvent> previous)
     {
         lock (gate) { items.Clear(); seen.Clear(); seenOrder.Clear(); foreach (var item in previous) Add(item); }
     }
-    public List<LiveDetectionEvent> Snapshot() { lock (gate) return items.Select(x => new LiveDetectionEvent { RecordedUtc = x.RecordedUtc, EventUtc = x.EventUtc, RecordId = x.RecordId, EventId = x.EventId, Kind = x.Kind, Summary = x.Summary, Details = x.Details, Recovered = x.Recovered, Severity = x.Severity }).ToList(); }
+    public List<LiveDetectionEvent> Snapshot() { lock (gate) return items.Select(x => new LiveDetectionEvent { RecordedUtc = x.RecordedUtc, EventUtc = x.EventUtc, SourceUtcTicks = x.SourceUtcTicks, RecordId = x.RecordId, EventId = x.EventId, Kind = x.Kind, Summary = x.Summary, Details = x.Details, Recovered = x.Recovered, Severity = x.Severity }).ToList(); }
 }
