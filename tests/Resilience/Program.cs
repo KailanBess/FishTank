@@ -76,6 +76,16 @@ internal static class Program
             Check(health.Count == 7 && health.Any(x => x.Name == "Defender real-time protection") && health.All(x => new[] { "Unknown", "Review", "No issue observed" }.Contains(x.State)), "Large collector resource did not execute the requested health mode with bounded unknown states");
             var liveReading = Core.Parse<LiveProtectionReading[]>(Core.Collect("LiveProtection"));
             Check(liveReading.Length == 1, "Collector silently fell back to the default inventory mode");
+            try {
+                var source = new WindowsLiveEventSource();
+                using (source.Subscribe(item => { }, message => { })) {
+                    var batch = source.Read(new LiveEventCursor(), 10);
+                    Check(batch.Cursor != null && batch.Events.Count <= 10 && batch.Events.All(x => x.RecordId > 0 && x.EventUtc != DateTime.MinValue && LiveDetectionPolicy.Kind(x.EventId) != null), "Native Defender log returned invalid source identities");
+                    Console.WriteLine("Read-only native Defender subscription/log query exercised; " + batch.Events.Count + " available records observed. This does not establish detection efficacy.");
+                }
+            } catch (System.Diagnostics.Eventing.Reader.EventLogException) { Console.WriteLine("Native Defender log unavailable on this runner: coverage unknown. Deterministic failure tests run separately."); }
+              catch (UnauthorizedAccessException) { Console.WriteLine("Native Defender log access denied: coverage unknown. No Windows access policy changed."); }
+              catch (InvalidOperationException ex) { Console.WriteLine("Native Defender log could not be validated: coverage unknown. " + ex.Message); }
             File.WriteAllText(Path.Combine(root, "github-update-result.json"), "{\"Status\":\"Pending\"}"); Check(UpdateRecoveryStatus.Notice() != null, "Interrupted update hidden");
             File.WriteAllText(Path.Combine(root, "github-update-result.json"), "broken result"); Check(UpdateRecoveryStatus.Notice().Contains("could not be read"), "Damaged update result treated as success");
             Console.WriteLine(checks + " isolated-profile resilience checks passed. No live scan, user profile, certificate trust or installation was changed."); return 0;

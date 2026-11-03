@@ -44,7 +44,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build Windows UI regression checks
         run: dotnet build tests/WindowsUi/WindowsUi.csproj -c Release
-      - name: Check workspace, queue, encrypted vault extensions and signed reports
+      - name: Check live-event recovery, status races, workspace, vault and signed reports
         shell: pwsh
         run: |
           dotnet build tests/Expansion/Expansion.csproj -c Release

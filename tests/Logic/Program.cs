@@ -173,7 +173,7 @@ try {
     Check(liveBuffer.Add(reported) && !liveBuffer.Add(reported), "Duplicate live records were not suppressed");
     liveBuffer.Add(new LiveDetectionEvent { RecordId = 11, EventId = 1117, RecordedUtc = backupNow.AddSeconds(1), EventUtc = backupNow.AddSeconds(1), Kind = "Defender action" });
     liveBuffer.Add(new LiveDetectionEvent { RecordId = 2, EventId = 1116, RecordedUtc = backupNow.AddSeconds(2), EventUtc = backupNow.AddSeconds(2), Kind = "Defender detection" });
-    Check(liveBuffer.Snapshot().Count == 3 && liveBuffer.Snapshot().Any(x => x.Kind == "Coverage gap"), "Log reset/reordering gap missing or history unbounded");
+    Check(liveBuffer.Snapshot().Count == 3 && !liveBuffer.Snapshot().Any(x => x.Kind == "Coverage gap"), "Out-of-order delivery invented a log reset or history unbounded");
     var retained = liveBuffer.Snapshot(); liveBuffer.Restore(retained);
     Check(liveBuffer.Snapshot().Count == retained.Count, "Restoring history invented extra gaps");
     liveBuffer.Snapshot()[0].Summary = "mutated external copy";

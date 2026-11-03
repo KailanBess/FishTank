@@ -35,6 +35,7 @@ try{
   'docs/PROTECTED-FILES-AND-GITHUB-UPDATES.md',
   'docs/DISK-HEALTH-AND-BACKUP-AGE.md',
   'docs/LIVE-DETECTION.md',
+  'docs/LIVE-VALIDATION.md',
   'docs/BROWSER-AND-ACCOUNT-ORGANIZATION.md'
  )
  foreach($file in $files){Copy-Item -LiteralPath (Join-Path $root $file) -Destination $temporary}
@@ -55,7 +56,7 @@ Settings > Open browser dashboard adds a local-only paired browser interface. Pa
 Dashboard adds attention items and clear protection status. Antivirus adds optional scan scheduling. Settings adds folder backup reminders, settings search and an editable support report. Activity timeline combines local security events. Read APP-INSIGHTS.md for scope, defaults and limits.
 Simple view is the default. Advanced view adds evidence and controls without changing protection.
 
-This is not an audited or production-approved security release. Windows runtime and visual validation remain pending in the Linux build workspace; see SECURITY-AND-INTEGRITY.md for the exact checks and limits.
+This is not an audited or production-approved security release. Automated Windows runtime and UI checks are recorded in the validation guides; independent security review and physical-device acceptance remain necessary. See LIVE-VALIDATION.md for live-checking tests and their limits.
 The executables are unsigned and intentionally cannot pass the signed-update gate. GitHub updates have a separate confirmed installer; only signed, pinned, newer releases can be installed. A publisher certificate, GitHub release secrets, signed assets and an independent security audit remain external requirements.
 
 No private configuration, passwords, device tokens or databases are included.

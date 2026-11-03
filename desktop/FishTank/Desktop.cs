@@ -279,7 +279,7 @@ public sealed partial class Desktop : Form
 			if (IsDisposed || !liveDetection.Enabled) return;
 			SetStatus("Live Defender alert: " + item.Kind + ". Open Monitoring to review the source evidence.");
 			RefreshLiveDisplay();
-			try { if (NoticeCenter.Add("Defender activity: " + item.Kind, "Monitoring", 2) && SecurityPreferences.Load().LiveDetectionNotifications) { EnsureTray(); notificationTarget = "Monitoring"; securityIcon.ShowBalloonTip(8000, "FishTank · Defender activity", "Defender activity or a monitoring coverage gap needs review. Open FishTank → Monitoring. No file paths are shown in notifications.", ToolTipIcon.Warning); } }
+			try { if (NoticeCenter.Add("Defender activity: " + item.Kind + " · " + item.EventId + "/" + item.RecordId + " · " + item.RecordedUtc.ToString("O"), "Monitoring", item.Severity) && SecurityPreferences.Load().LiveDetectionNotifications) { EnsureTray(); notificationTarget = "Monitoring"; securityIcon.ShowBalloonTip(8000, "FishTank · Defender activity", "Defender activity or a monitoring coverage gap needs review. Open FishTank → Monitoring. No file paths are shown in notifications.", item.Severity == 2 ? ToolTipIcon.Warning : ToolTipIcon.Info); } }
 			catch { /* Event history and coverage status remain available. */ }
 		}); } catch (InvalidOperationException) { }
 	}

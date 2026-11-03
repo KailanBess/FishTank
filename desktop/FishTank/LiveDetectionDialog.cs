@@ -36,14 +36,17 @@ internal sealed class LiveDetectionDialog : Form
                     if (picker.ShowDialog(this) == DialogResult.OK) using (var file = new StreamWriter(new FileStream(picker.FileName, FileMode.CreateNew, FileAccess.Write, FileShare.None))) file.Write(live.Report());
             } catch { detail.Text = "Export did not complete. Existing files were not overwritten; a partial selected report may remain."; }
         };
-        actions.Controls.Add(export); layout.Controls.Add(actions, 0, 1);
+        actions.Controls.Add(export);
+        var checkNow = new Button { Text = "Check now", AutoSize = true };
+        checkNow.Click += async delegate { checkNow.Enabled = false; try { await live.CheckNowAsync(); if (!IsDisposed) RefreshEvents(); } finally { if (!checkNow.IsDisposed) checkNow.Enabled = true; } };
+        actions.Controls.Add(checkNow); layout.Controls.Add(actions, 0, 1);
         list = new DataGridView { Dock = DockStyle.Fill, ReadOnly = true, AllowUserToAddRows = false, AllowUserToDeleteRows = false, RowHeadersVisible = false,
             MultiSelect = false, SelectionMode = DataGridViewSelectionMode.FullRowSelect, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
             BackgroundColor = colors.Surface, EnableHeadersVisualStyles = false, AccessibleName = "Defender-reported live events and coverage gaps" };
         list.DefaultCellStyle.BackColor = colors.Surface; list.DefaultCellStyle.ForeColor = colors.Text;
         list.DefaultCellStyle.SelectionBackColor = colors.Surface2; list.DefaultCellStyle.SelectionForeColor = colors.Text;
         list.ColumnHeadersDefaultCellStyle.BackColor = colors.Surface2; list.ColumnHeadersDefaultCellStyle.ForeColor = colors.Text;
-        list.Columns.Add("time", "Recorded (local time)"); list.Columns.Add("kind", "Source / event type"); list.Columns.Add("summary", "Explanation");
+        list.Columns.Add("time", "Source time (local)"); list.Columns.Add("kind", "Source / event type"); list.Columns.Add("summary", "Explanation");
         list.Columns[0].FillWeight = 22; list.Columns[1].FillWeight = 26; list.Columns[2].FillWeight = 52;
         list.SelectionChanged += delegate { ShowSelected(); }; layout.Controls.Add(list, 0, 2);
         detail = new TextBox { Dock = DockStyle.Fill, Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, BackColor = colors.Surface, ForeColor = colors.Text, AccessibleName = "Selected live event explanation and optional technical details" };
@@ -56,13 +59,13 @@ internal sealed class LiveDetectionDialog : Form
     private void RefreshEvents()
     {
         if (IsDisposed) return;
-        coverage.Text = live.Status + "\nUp to 250 events retained across sessions; older entries are trimmed. No events does not mean no threats. This is a Defender event listener, not a second antivirus engine.";
+        coverage.Text = live.Status + "\nUp to 1,000 entries / 4 MiB retained across sessions; trimmed counts are reported. Missed records are reconciled while available in Windows. No events does not mean no threats. This is a Defender event listener, not a second antivirus engine.";
         var items = live.Events(); string current = items.Count + ":" + (items.Count == 0 ? "" : Key(items.Last()));
         if (signature == current) return;
         string selected = list.SelectedRows.Count == 0 ? null : Key((LiveDetectionEvent)list.SelectedRows[0].Tag);
         bool follow = list.SelectedRows.Count == 0 || list.SelectedRows[0].Index == list.Rows.Count - 1;
         signature = current; list.Rows.Clear();
-        foreach (var item in items) list.Rows[list.Rows.Add(item.RecordedUtc.ToLocalTime().ToString("g"), item.Kind, item.Summary)].Tag = item;
+        foreach (var item in items) list.Rows[list.Rows.Add(item.EventUtc.ToLocalTime().ToString("g"), (item.Recovered ? "Recovered · " : "") + item.Kind, item.Summary)].Tag = item;
         list.ClearSelection();
         var target = follow ? list.Rows.Cast<DataGridViewRow>().LastOrDefault() : list.Rows.Cast<DataGridViewRow>().FirstOrDefault(x => Key((LiveDetectionEvent)x.Tag) == selected);
         if (target != null) { target.Selected = true; if (follow && list.IsHandleCreated && list.DisplayedRowCount(false) > 0) list.FirstDisplayedScrollingRowIndex = target.Index; }
@@ -72,7 +75,7 @@ internal sealed class LiveDetectionDialog : Form
     {
         if (detail == null) return;
         if (list.SelectedRows.Count == 0 || !(list.SelectedRows[0].Tag is LiveDetectionEvent item)) { detail.Text = "Select an event. Background/offline gaps and missing telemetry are not treated as clean results."; return; }
-        detail.Text = item.Summary + (advanced.Checked ? "\r\n\r\nEvent ID: " + item.EventId + " · Record ID: " + item.RecordId + "\r\nSource event time (UTC): " + item.EventUtc.ToUniversalTime().ToString("u") + "\r\n" + item.Details : "\r\n\r\nEnable details for the retained source metadata. FishTank has not opened or inspected the reported files.");
+        detail.Text = item.Summary + "\r\n\r\n" + (item.Recovered ? "Recovered historical record" : item.RecordId > 0 ? "Live source record" : "FishTank monitoring observation") + "\r\nReceived (UTC): " + item.RecordedUtc.ToString("u") + (advanced.Checked ? "\r\n\r\nEvent ID: " + item.EventId + " · Record ID: " + item.RecordId + "\r\nSource event time (UTC): " + item.EventUtc.ToUniversalTime().ToString("u") + "\r\n" + item.Details : "\r\n\r\nEnable details for the retained source metadata. FishTank has not opened or inspected the reported files.");
     }
     protected override void Dispose(bool disposing) { if (disposing) refresh.Dispose(); base.Dispose(disposing); }
 }

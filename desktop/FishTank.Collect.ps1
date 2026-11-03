@@ -29,7 +29,7 @@ $result = switch($Mode) {
   try {
    $protection=Get-MpComputerStatus
    if($null -eq $protection){throw 'No Defender status returned.'}
-   [pscustomobject]@{AntivirusEnabled=$protection.AntivirusEnabled;RealTimeProtectionEnabled=$protection.RealTimeProtectionEnabled;Mode=[string]$protection.AMRunningMode;Error=$null}
+   [pscustomobject]@{AntivirusEnabled=$protection.AntivirusEnabled;RealTimeProtectionEnabled=$protection.RealTimeProtectionEnabled;Mode=[string]$protection.AMRunningMode;Error=$null;ServiceEnabled=$protection.AMServiceEnabled;BehaviorMonitorEnabled=$protection.BehaviorMonitorEnabled;IoavProtectionEnabled=$protection.IoavProtectionEnabled;NisEnabled=$protection.NISEnabled;TamperProtected=$protection.IsTamperProtected;SignatureAgeDays=$protection.AntivirusSignatureAge;SignatureVersion=[string]$protection.AntivirusSignatureVersion}
   }catch{[pscustomobject]@{AntivirusEnabled=$null;RealTimeProtectionEnabled=$null;Mode=$null;Error='Defender status unavailable; no settings were changed.'}}
  }
 

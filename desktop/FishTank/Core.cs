@@ -187,8 +187,10 @@ public static class Core
 		return result;
 	}
 
-	public static string Collect(string mode)
+	public static string Collect(string mode) => Collect(mode, 90000);
+	public static string Collect(string mode, int timeoutMilliseconds)
 	{
+        if (timeoutMilliseconds < 1000 || timeoutMilliseconds > 90000) throw new ArgumentOutOfRangeException(nameof(timeoutMilliseconds));
 		if (Array.IndexOf(new string[] { "Health", "Network", "Persistence", "Events", "Tailscale", "Hardening", "Accounts", "Browsers", "ScanPolicy", "SecurityHealth", "StartupInventory", "Permissions", "Exposure", "DiskHealth", "LiveProtection" }, mode) < 0)
 		{
 			throw new ArgumentException("Unknown collector");
@@ -209,7 +211,7 @@ public static class Core
         // Keep the command short even as the embedded collector grows beyond Windows' argv limit.
         string bootstrap = "[Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false); & ([ScriptBlock]::Create([Console]::In.ReadToEnd()))";
         string text2 = Convert.ToBase64String(Encoding.Unicode.GetBytes(bootstrap));
-        CommandResult commandResult = RunCancelable(exe, "-NoProfile -NonInteractive -EncodedCommand " + text2, 90000, CancellationToken.None, text);
+        CommandResult commandResult = RunCancelable(exe, "-NoProfile -NonInteractive -EncodedCommand " + text2, timeoutMilliseconds, CancellationToken.None, text);
 		if (commandResult.ExitCode != 0)
 		{
 			throw new IOException(commandResult.Output + "\n" + commandResult.Error);

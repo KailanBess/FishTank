@@ -1,21 +1,33 @@
-# Optional live Defender alerts
+# Live Defender checking (0.15)
 
-In Simple or Advanced view, open **Monitoring → Start live Defender alerts**. This defaults off. FishTank subscribes to new Microsoft Defender Operational events and reads Defender protection status about once a minute. It does not change antivirus policy, scan every file itself or automatically delete files.
+Open **Monitoring → Start live Defender alerts**. Monitoring defaults off. FishTank observes Microsoft Defender status and selected Operational log records; Windows Defender performs protection and remediation. FishTank does not silently change antivirus policy or delete detected files.
 
-The history shows Defender detections, protection actions and failures, attack-surface-reduction and controlled-folder blocks/audits, and protection configuration changes. Audit events are not blocks; configuration changes are not proof of intrusion. Coverage warnings identify unavailable logs, missing/stale status, passive protection and interrupted monitoring. No events is not a clean-device verdict.
+## Delivery and recovery
 
-## Background operation
+FishTank subscribes to incoming records and reconciles the available Windows log every 10 seconds in batches of up to 500 matching events. A protected checkpoint records source record ID, event ID and source timestamp together with retained history. Restarting or reconnecting resumes after that anchor. Watcher/replay duplicates are suppressed. Out-of-order callbacks alone do not imply a reset.
 
-Enable **Keep running in tray when window closes** separately to continue while the window is hidden. The visible tray icon provides Show and Exit. Hiding locks app access and open vaults; restoring respects the configured app sign-in. Exit stops this listener. Windows Defender operates independently. FishTank does not install a background service or Windows startup entry: reopen and sign in after restart/logoff. Events while it is stopped may be absent; this is not a complete historical log reader.
+Before trusting delivery, FishTank checks that the log is enabled/readable and the saved anchor still matches. An overwritten, missing or replaced anchor produces an explicit gap. Initial startup and reset recovery cover available matching records from the last 24 hours; older/deleted records cannot be reconstructed. Catch-up remains visibly incomplete until replay reaches its captured log head. A reset during a read prevents checkpoint advancement. Subscriptions retry after failure; log reconciliation continues independently.
 
-Optional generic Windows notifications omit file paths. Windows notification settings or Focus Assist can suppress delivery. Notification throttling does not discard events from the bounded history.
+Live and recovered historical records are labeled separately. The list uses source time; details also show receipt time. Recovery summaries are FishTank observations, not additional detections. Detections, successful/failed actions, suspicious behavior, ASR/CFA blocks/audits, engine failures, disabled components, configuration changes and tamper-blocked changes have distinct explanations. Audit/configuration events are not automatically treated as urgent malware alerts.
 
-## Privacy and limits
+## Current protection status
 
-Up to 250 recent entries are stored locally using the existing Windows-account DPAPI protected store. Selected event details can contain paths and process names; advanced details and exports should be treated as private. Export requires confirmation and writes a new plaintext JSON file. FishTank does not upload these events or read the detected file contents.
+Read-only Defender queries run about every 30 seconds with a 15-second process timeout. Freshness starts at query start, not completion. Protection-change events invalidate older observations; an in-flight result crossing a newer change is discarded. Previous-session callbacks/results are rejected. **Check now** requests an immediate cycle when no cycle is already running.
 
-Coverage depends on Defender, its exclusions, policies, event-log access and the running FishTank process. Other antivirus products, encrypted/offline content and every possible threat are outside this listener's coverage. Real detections should be reviewed in Windows Security.
+A subscription alone never establishes healthy delivery. Log validation older than 30 seconds is a coverage gap; protection observations older than 90 seconds or dated in the future become unknown. Unavailable, passive, disabled or incomplete readings are described explicitly. Service, behavior, download/network scanning, tamper protection and signature age add evidence; missing components are not silently presented as observed. Signature age over three days prompts review. These observations do not prove a clean device or detection of every threat.
 
-## Validation
+## History and notifications
 
-Portable policy tests cover event classification, missing/stale/passive/off protection, bounded history/deduplication and safe XML detail parsing. Collector fixtures cover typed Defender status and unavailable data. Windows security/UI harnesses include opt-in lifecycle, history display and tray lock checks. They compile in the Linux workspace, but native subscriptions, real Windows events, notifications, tray interaction and visual appearance require Windows runtime verification. No malicious samples were used.
+History retains up to 1,000 entries and a 4 MiB serialized checkpoint, trimming older entries as needed. Status/export diagnostics show retained/trimmed counts. Recent source identities remain deduplicated after history eviction within a bounded 10,000-identity cache. Large bursts can exceed these bounds; the Windows log remains the source for deeper investigation.
+
+History/checkpoint save together in the Windows-account DPAPI store. Save failures remain visible and are retried; events arriving during a save remain pending. An unreadable/corrupt store is preserved, never replaced with empty defaults. Saving is blocked until storage is repaired and FishTank restarted. Back up the existing profile before repair.
+
+Notifications use severity-aware grouping. Suppressed bursts produce a later count summary while individual source events remain in bounded history. Recovery produces a summary rather than one popup per old record. Generic notifications omit paths. Windows settings, Focus Assist, FishTank quiet hours or snoozing can suppress popups; review Monitoring and notice history. A summary is not an extra source detection.
+
+## Background operation and privacy
+
+Enable **Keep running in tray when window closes** separately to continue hidden. Hiding locks app access/open vaults; restoring respects sign-in. Exit stops FishTank monitoring. Defender continues independently. FishTank installs no service/startup entry: reopen/sign in after logoff/restart. Available missed records reconcile on resumption; uninterrupted monitoring while the process is stopped is impossible.
+
+Selected metadata may include private file/process paths. Export writes a new plaintext JSON file with diagnostics and retained details after confirmation; existing files are not overwritten. Events are not uploaded and reported files are not opened by this listener.
+
+Defender exclusions, OS policy, event retention/access, other antivirus products and offline/encrypted content limit coverage. FishTank cannot override these conditions or provide a measured detection rate. Review actual threats/failures in Windows Security. See [Microsoft's Defender event reference](https://learn.microsoft.com/en-us/defender-endpoint/troubleshoot-microsoft-defender-antivirus) and LIVE-VALIDATION.md.

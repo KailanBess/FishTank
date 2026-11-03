@@ -16,6 +16,7 @@ internal static class Program
         Directory.CreateDirectory(root);Core.Data=root;
         try
         {
+            LiveReliabilityChecks.Run(Check);
             var prefs=WorkspacePreferences.Load();Check(!prefs.RemoteStatusEnabled&&!prefs.ExternalDrivePrompts&&!prefs.QuietHours,"Optional sharing or prompts enabled by default");
             prefs.QuietHours=true;prefs.QuietStartHour=22;prefs.QuietEndHour=8;Check(!prefs.MayNotify(2,DateTime.UtcNow,new DateTime(2026,1,1,23,0,0)),"Overnight quiet hours failed");Check(prefs.MayNotify(2,DateTime.UtcNow,new DateTime(2026,1,1,12,0,0)),"Daytime quiet filter failed");
             Check(NoticeCenter.Add("Fixture reminder","Disk",1),"First notice suppressed");Check(!NoticeCenter.Add("Fixture reminder","Disk",1)&&NoticeCenter.Read().Single().Repeats==2,"Duplicate popup not suppressed");

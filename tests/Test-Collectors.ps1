@@ -14,7 +14,7 @@ $global:FishTankFixtureFree=50GB
 $global:FishTankFixtureVolumeSize=100GB
 $script:checks=0
 function Assert($Condition,[string]$Name){if(!$Condition){throw $Name};$script:checks++}
-function Get-MpComputerStatus{if($global:FishTankFixtureStatusUnavailable){throw 'Fixture Defender unavailable'};[pscustomobject]@{AntivirusEnabled=$true;RealTimeProtectionEnabled=$global:FishTankFixtureRealtime;AMRunningMode=$global:FishTankFixtureMode;AntivirusSignatureAge=$global:FishTankFixtureSignatureAge;AntivirusSignatureVersion='fixture'}}
+function Get-MpComputerStatus{if($global:FishTankFixtureStatusUnavailable){throw 'Fixture Defender unavailable'};[pscustomobject]@{AntivirusEnabled=$true;RealTimeProtectionEnabled=$global:FishTankFixtureRealtime;AMRunningMode=$global:FishTankFixtureMode;AntivirusSignatureAge=$global:FishTankFixtureSignatureAge;AntivirusSignatureVersion='fixture';AMServiceEnabled=$true;BehaviorMonitorEnabled=$true;IoavProtectionEnabled=$true;NISEnabled=$true;IsTamperProtected=$true}}
 function Get-NetFirewallProfile{[pscustomobject]@{Name='Private';Enabled=$true}}
 function Confirm-SecureBootUEFI{if($null -eq $global:FishTankFixtureBoot){throw 'Fixture access denied'};$global:FishTankFixtureBoot}
 function Get-BitLockerVolume{param($MountPoint);[pscustomobject]@{ProtectionStatus=1;VolumeStatus='FullyEncrypted'}}
@@ -79,6 +79,8 @@ Assert (($disk | Where-Object Name -eq 'Volume Z: free space').State -eq 'No iss
 $global:FishTankFixtureRealtime=$true
 $live=& $collector -Mode LiveProtection | ConvertFrom-Json
 Assert ($live.Count -eq 1 -and $live[0].RealTimeProtectionEnabled -eq $true -and $live[0].AntivirusEnabled -eq $true) 'Live readiness flags were not preserved'
+Assert ($live[0].ServiceEnabled -eq $true -and $live[0].BehaviorMonitorEnabled -eq $true -and $live[0].IoavProtectionEnabled -eq $true -and $live[0].NisEnabled -eq $true -and $live[0].TamperProtected -eq $true) 'Extended live protection fields lost'
+Assert ($live[0].SignatureAgeDays -eq 10 -and $live[0].SignatureVersion -eq 'fixture') 'Live signature age/version lost'
 $global:FishTankFixtureRealtime=$false
 $live=& $collector -Mode LiveProtection | ConvertFrom-Json
 Assert ($live[0].RealTimeProtectionEnabled -eq $false) 'Disabled real-time status was coerced on'
