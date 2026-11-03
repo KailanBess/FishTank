@@ -200,8 +200,14 @@ public static class Core
 			using StreamReader streamReader = new StreamReader(stream);
 			text = streamReader.ReadToEnd();
 		}
+        // Specialize the validated mode in the resource itself; never silently fall back to Health.
+        const string modeDeclaration = "[string]$Mode='Health'";
+        if (text.IndexOf(modeDeclaration, StringComparison.Ordinal) < 0
+            || text.IndexOf(modeDeclaration, StringComparison.Ordinal) != text.LastIndexOf(modeDeclaration, StringComparison.Ordinal))
+            throw new InvalidDataException("Embedded collector mode declaration was not recognized.");
+        text = text.Replace(modeDeclaration, "[string]$Mode='" + mode + "'");
         // Keep the command short even as the embedded collector grows beyond Windows' argv limit.
-        string bootstrap = "[Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false); & ([ScriptBlock]::Create([Console]::In.ReadToEnd())) -Mode " + mode;
+        string bootstrap = "[Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false); & ([ScriptBlock]::Create([Console]::In.ReadToEnd()))";
         string text2 = Convert.ToBase64String(Encoding.Unicode.GetBytes(bootstrap));
         CommandResult commandResult = RunCancelable(exe, "-NoProfile -NonInteractive -EncodedCommand " + text2, 90000, CancellationToken.None, text);
 		if (commandResult.ExitCode != 0)

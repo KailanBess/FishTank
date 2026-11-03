@@ -105,7 +105,7 @@ internal static class Program
             Reject<InvalidOperationException>(() => TrustedDownloads.StageUpdate(typeof(Program).Assembly.Location, DownloadChecksum.Compute(typeof(Program).Assembly.Location)), "Update staged without publisher pin");
             Reject<ArgumentException>(() => VerifiedUpdateFeed.Read(), "Unconfigured release feed used network");
             var health = SecurityReviews.Capture("SecurityHealth");
-            Check(health.Items.Count >= 7 && health.Items.Any(x => x.Name == "Secure Boot"), "Windows health collector did not execute");
+            Check(health.Items.Count == 7 && health.Items.Any(x => x.Name == "Secure Boot") && health.Items.Any(x => x.Name == "Defender real-time protection"), "Windows health collector did not execute the requested mode");
             Check(health.Items.All(x => new[] { "Unknown", "Review", "No issue observed" }.Contains(x.State)), "Unsupported health status: " + string.Join(" | ", health.Items.Select(x => "[" + (x.State ?? "null") + "]")));
             var disks = SecurityReviews.Capture("DiskHealth");
             Check(disks.Items.Count > 0 && disks.Items.All(x => new[] { "Unknown", "Review", "No issue observed" }.Contains(x.State)), "Disk collector did not return bounded health/unknown evidence");

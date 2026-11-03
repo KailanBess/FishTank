@@ -73,7 +73,9 @@ internal static class Program
             var signature = TrustedDownloads.Signature(typeof(Program).Assembly.Location);
             Check(signature.Status == "NotSigned", "Built-in publisher verifier did not inspect the unsigned fixture");
             var health = Core.Parse<System.Collections.Generic.List<EvidenceItem>>(Core.Collect("SecurityHealth"));
-            Check(health.Count >= 7 && health.All(x => new[] { "Unknown", "Review", "No issue observed" }.Contains(x.State)), "Large collector resource did not execute with bounded unknown states");
+            Check(health.Count == 7 && health.Any(x => x.Name == "Defender real-time protection") && health.All(x => new[] { "Unknown", "Review", "No issue observed" }.Contains(x.State)), "Large collector resource did not execute the requested health mode with bounded unknown states");
+            var liveReading = Core.Parse<LiveProtectionReading[]>(Core.Collect("LiveProtection"));
+            Check(liveReading.Length == 1, "Collector silently fell back to the default inventory mode");
             File.WriteAllText(Path.Combine(root, "github-update-result.json"), "{\"Status\":\"Pending\"}"); Check(UpdateRecoveryStatus.Notice() != null, "Interrupted update hidden");
             File.WriteAllText(Path.Combine(root, "github-update-result.json"), "broken result"); Check(UpdateRecoveryStatus.Notice().Contains("could not be read"), "Damaged update result treated as success");
             Console.WriteLine(checks + " isolated-profile resilience checks passed. No live scan, user profile, certificate trust or installation was changed."); return 0;
