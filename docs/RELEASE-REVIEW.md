@@ -15,19 +15,20 @@ Reviewed November 2, 2026. This is an implementation review and regression-test 
 | A previous test fixture added a second backup type and collided with an unrelated Single() assertion. | Select the intended password-vault backup by kind and path. | Native security-suite fixture corrected; coverage is retained. |
 | Windows PowerShell children could inherit PowerShell 7 module paths and fail to load their built-in signature/collector modules. | Set compatible built-in/machine module paths for the child process only; keep the user's environment and all trust checks unchanged. Include bounded verifier diagnostics on failure. | Reproduced the module-load error locally, then confirmed the real verifier reports the unsigned fixture as NotSigned. |
 | The expanded embedded collector exceeded Windows' command-line length limit after Base64 encoding. | Send the trusted embedded resource over UTF-8 standard input with a short bootstrap command and the existing timeout. No execution-policy changes or temporary scripts are needed. | An actual protection-health collection completes and returns at least seven supported evidence states. |
+| Streamed collector requests on hosted Windows could fall back to generic inventory output. | Bind the validated category inside the embedded resource and require exact category-specific health/live-protection output. | Hosted Windows now passes both category checks; generic inventory is not accepted as protection-health evidence. |
 | Settings had accumulated setup, authentication, diagnostics and connection controls on one long page. | Group everyday settings into appearance/access and automation/connections; move occasional tasks into More tools. Preserve settings search and Recovery center access. | Windows UI checks and screenshots at 100/150% text scale in both themes. |
 
 ## Verification
 
 - 132 logic checks passed locally.
-- 32 new isolated-profile resilience checks passed locally, including a blocked loopback proxy that makes the real update check fail without contacting GitHub, an actual built-in signature-verifier check and a real protection-health collection.
+- 33 new isolated-profile resilience checks passed locally, including a blocked loopback proxy that makes the real update check fail without contacting GitHub, an actual built-in signature-verifier check and category-specific protection-health/live-protection collections.
 - 46 existing app-insight/polish checks are included in the native security suite and have a separate local fixture runner.
 - 3,639 Windows UI checks passed locally after the Settings changes.
 - 28 collector fixture checks and eight PowerShell resource/build-script syntax checks passed locally.
 - Update-helper fixtures cover success, post-replacement verification failure, a locked second executable and tampered staging. Signatures/restart are mocked; these are not trusted signed-install acceptance tests.
-- The previous hosted run exposed the browser input race and backup-fixture collision above. A new hosted run must pass after these fixes; the final chat reports its outcome.
+- Hosted verification passed for code commit `05cc907e32281395bc726557a7c63e036cef3025`: [GitHub Actions run 41551861972](https://github.com/KailanBess/FishTank/actions/runs/41551861972). Both Windows and browser jobs are green. The run passed 132 logic, 183 browser/session/vault, 100 native Windows security, 33 resilience, 3,639 UI, 28 collector, 20 mocked update/rollback and 22 browser UI checks; all eight PowerShell scripts parsed. CLI build and unsigned packaging also passed.
 
-The local sandbox cannot start an HTTP.sys URL listener and cannot complete the existing security suite's Windows ACL/private-profile operations. These checks must run on the hosted Windows job or a suitable test machine. Their absence is not a pass. UI screenshots were inspected; physical display scaling and real screen-reader behavior remain manual acceptance items.
+The local sandbox cannot start an HTTP.sys URL listener and cannot complete the existing security suite's Windows ACL/private-profile operations. The hosted Windows job has now passed these native and HTTP checks; the local sandbox restriction remains. UI screenshots were inspected; physical display scaling and real screen-reader behavior remain manual acceptance items.
 
 ## Reproducible checks
 
