@@ -1204,69 +1204,8 @@ public sealed partial class Desktop : Form
 				Button("Security checklist", () => Navigate("Security Center"), false),
 				Button("Protect app access", () => Navigate("Settings"), false));
 		}
-		if (appearance.ShowBanner)
-		{
-			Surface surface = Card(220);
-			Panel panel = new Panel();
-			panel.Dock = DockStyle.Fill;
-			panel.BackColor = palette.Surface;
-			Panel panel2 = panel;
-			Label label = Label("YOUR WINDOWS COMPANION", 8f, palette.Accent);
-			label.Dock = DockStyle.Top;
-			label.Height = 24;
-			Label label2 = Label((health == null) ? "Let’s check your device." : "Your latest checks are ready.", 23f, palette.Text);
-			label2.Font = Face(23f, FontStyle.Bold);
-			label2.Dock = DockStyle.Top;
-			label2.Height = (int)TextSize(50f);
-			Label label3 = Label((health == null) ? "Get a clear view of Windows protection, network settings and device health." : "Review collected evidence below. Unavailable checks remain unknown.", 11f, palette.Muted);
-			label3.Dock = DockStyle.Top;
-			label3.Height = (int)TextSize(48f);
-			CleanButton cleanButton = Button((health == null) ? "Check this device" : "Refresh checks", delegate
-			{
-				StartWork(() => Core.Collect("Health"), "Health");
-			}, primary: true);
-			cleanButton.Dock = DockStyle.Bottom;
-			cleanButton.Height = 46;
-			Panel panel3 = new Panel();
-			panel3.Dock = DockStyle.Bottom;
-			panel3.Height = 48;
-			panel3.BackColor = palette.Surface;
-			Panel panel4 = panel3;
-			panel4.Controls.Add(cleanButton);
-			cleanButton.Dock = DockStyle.Left;
-			cleanButton.Width = Math.Max(190, TextRenderer.MeasureText(cleanButton.Text, cleanButton.Font).Width + 40);
-			panel2.Controls.Add(panel4);
-			panel2.Controls.Add(label3);
-			panel2.Controls.Add(label2);
-			panel2.Controls.Add(label);
-			surface.Controls.Add(panel2);
-			if (artwork != null && appearance.ShowIcons)
-			{
-				BubbleTank bubbleTank = new BubbleTank();
-				bubbleTank.ReducedMotion = appearance.ReducedMotion;
-				bubbleTank.BubbleColor = palette.Accent;
-				bubbleTank.Filled = appearance.IconStyle == "Filled";
-				bubbleTank.Frame = appearance.ArtworkFrame;
-				bubbleTank.Shadow = appearance.ArtworkShadow;
-				bubbleTank.Image = displayArtwork;
-				bubbleTank.SizeMode = PictureBoxSizeMode.Zoom;
-				bubbleTank.Dock = DockStyle.Right;
-				bubbleTank.Width = ((appearance.Artwork == "Compact") ? 150 : ((appearance.Artwork == "Large") ? 280 : 220));
-				bubbleTank.BackColor = palette.Surface;
-				bubbleTank.AccessibleName = "FishTank aquarium hull and glass barrel";
-				BubbleTank value = bubbleTank;
-				surface.Controls.Add(value);
-				panel2.BringToFront();
-			}
-			AddBlock(surface, (int)TextSize(235f));
-		}
-		else
-		{
-			ActionRow(Button("Check this device", delegate
-			{
-				StartWork(() => Core.Collect("Health"), "Health");
-			}, primary: true));
-		}
+        if (appearance.ShowBanner) AddReferenceSecurityOverview();
+        else ActionRow(Button("Check this device", () => StartWork(() => Core.Collect("Health"), "Health"), true));
 		int num = 0;
 		if (health != null)
 		{
