@@ -17,7 +17,15 @@ internal static class AquariumWorkspace
     internal static void Register(Form form)
     {
         if (!Enabled) return;
-        form.HandleCreated += delegate { SetProp(form.Handle, "Aquarium.Workspace.v1", new IntPtr(1)); };
-        form.Shown += delegate { form.MinimumSize = new System.Drawing.Size(640, 400); form.WindowState = FormWindowState.Normal; if (GetParent(form.Handle) == IntPtr.Zero) ShowWindow(form.Handle, 0); };
+        bool ready = false;
+        Action mark = () => { if (!form.IsDisposed && form.IsHandleCreated) SetProp(form.Handle, "Aquarium.Workspace.v1", new IntPtr(1)); };
+        form.HandleCreated += delegate { if (ready) form.BeginInvoke(mark); };
+        form.Shown += delegate {
+            form.MinimumSize = new System.Drawing.Size(640, 400); form.WindowState = FormWindowState.Normal;
+            if (GetParent(form.Handle) == IntPtr.Zero) ShowWindow(form.Handle, 0);
+            // Publish readiness only after WinForms completes its first Show/Load cycle.
+            // Reparenting during HandleCreated races WinForms' top-level initialization.
+            form.BeginInvoke((Action)(() => { ready = true; mark(); }));
+        };
     }
 }

@@ -31,7 +31,7 @@ public static class AppearanceStore
 		Notice = "";
 		if (!File.Exists(FilePath))
 		{
-			return new Appearance().WithAquariumStyle();
+			return new Appearance().WithReferenceStyle();
 		}
 		try
 		{
@@ -107,3 +107,4 @@ public static class AppearanceStore
 		File.WriteAllText(path, Core.Json(value));
 	}
 }
+

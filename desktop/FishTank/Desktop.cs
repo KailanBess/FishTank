@@ -441,7 +441,7 @@ public sealed partial class Desktop : Form
 		nav = new Panel
 		{
 			Dock = DockStyle.Left,
-			Width = (int)(245 * appearance.TextScale / 100f),
+			Width = (int)(224 * appearance.TextScale / 100f),
 			BackColor = palette.Sidebar,
 			Padding = new Padding(16, 22, 14, 16)
 		};
@@ -1170,131 +1170,16 @@ public sealed partial class Desktop : Form
 		}
 	}
 
-	private void Dashboard()
-	{
-		Header("Your security, at a glance", "A calm place to check this PC and decide what needs attention.");
-        AddAttentionOverview();
-		AddViewControls();
-		if (liveDetection != null && liveDetection.Enabled)
-		{
-			Note("Live Defender alerts", liveDetection.Status);
-			ActionRow(Button("Open live monitoring", () => Navigate("Real-time monitoring"), false));
-		}
-		try
-		{
-			var storage = new List<string>();
-			string disk = DiskHealthChecks.CachedWarning();
-			if (disk != null) storage.Add(disk);
-			storage.AddRange(BackupHistory.Alerts().Select(x => x.Name + ": " + x.State + ". Open Backup and recovery for recorded dates; verification does not refresh creation age."));
-			if (storage.Count > 0)
-			{
-				Note("Saved disk and backup status", string.Join("\n\n", storage));
-				ActionRow(Button("Review disk health and backup ages", OpenSecurityTools, false));
-			}
-		}
-		catch { Note("Disk and backup status unknown", "Saved storage or backup evidence could not be read. Open Security Center to run a read-only check; no healthy or fresh status was inferred."); }
-		if (observing)
-		{
-			Note("Folder observer is running", "Your optional folder observer is still running in the background. Switching views does not stop it. It reports activity and does not block threats.");
-			ActionRow(Button("Stop folder observer", delegate { monitor.Dispose(); observing = false; RenderPage(); }, false));
-		}
-		if (!appearance.AdvancedMode)
-		{
-			Note("Start here", "1. Check this device to review Windows protection.\n2. Run a quick scan when you want Defender to inspect common locations.\n3. Set an app password in Settings, then add an authenticator and save recovery codes privately.\nAdvanced view adds folder activity observation, network inventory, manual quarantine and repair tools. No settings change just by switching views.");
-			ActionRow(Button("Quick scan", () => RequestScan("Quick"), true),
-				Button("Security checklist", () => Navigate("Security Center"), false),
-				Button("Protect app access", () => Navigate("Settings"), false));
-		}
+    private void Dashboard()
+    {
         if (appearance.ShowBanner) AddReferenceSecurityOverview();
-        else ActionRow(Button("Check this device", () => StartWork(() => Core.Collect("Health"), "Health"), true));
-		int num = 0;
-		if (health != null)
-		{
-			foreach (Dictionary<string, object> item in health)
-			{
-				if (Convert.ToString(item["State"]) == "Unknown")
-				{
-					num++;
-				}
-			}
-		}
-		Label label4 = Label((health == null) ? "PROTECTION OVERVIEW · NOT YET ASSESSED" : ("LATEST CHECKS · " + num + " UNAVAILABLE OR ACCESS-RESTRICTED"), 9f, palette.Muted);
-		if (appearance.BadgeStyle != "Text")
-		{
-			label4.BackColor = palette.Surface2;
-			label4.Padding = new Padding(8, 3, 0, 0);
-			label4.BorderStyle = ((appearance.BadgeStyle == "Square") ? BorderStyle.FixedSingle : BorderStyle.None);
-		}
-		AddBlock(label4, 25);
-		if (appearance.AdvancedMode)
-		{
-		int num2 = 0;
-		bool[] cardsVisible = appearance.CardsVisible;
-		for (int num3 = 0; num3 < cardsVisible.Length; num3++)
-		{
-			if (cardsVisible[num3])
-			{
-				num2++;
-			}
-		}
-		int num4 = 0;
-		TableLayoutPanel tableLayoutPanel = new TableLayoutPanel();
-		tableLayoutPanel.ColumnCount = 2;
-		tableLayoutPanel.RowCount = Math.Max(1, (num2 + 1) / 2);
-		tableLayoutPanel.BackColor = palette.Background;
-		tableLayoutPanel.Margin = new Padding(0);
-		TableLayoutPanel tableLayoutPanel2 = tableLayoutPanel;
-		tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
-		tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
-		for (int num5 = 0; num5 < tableLayoutPanel2.RowCount; num5++)
-		{
-			tableLayoutPanel2.RowStyles.Add(new RowStyle(SizeType.Percent, 100f / (float)tableLayoutPanel2.RowCount));
-		}
-		for (int num6 = 0; num6 < appearance.CardOrder.Length; num6++)
-		{
-			if (appearance.CardsVisible[num6])
-			{
-				string name = appearance.CardOrder[num6];
-				Surface surface2 = Card(150);
-				surface2.Dock = DockStyle.Fill;
-				surface2.Margin = new Padding((num4 % 2 != 0) ? (Gap / 2) : 0, 0, (num4 % 2 == 0) ? (Gap / 2) : 0, Gap);
-				surface2.Padding = new Padding(18);
-				Label label5 = Label(name, 14f, palette.Text);
-				label5.Font = Face(14f, FontStyle.Bold);
-				label5.Dock = DockStyle.Top;
-				label5.Height = 33;
-				Label label6 = Label((name == "Antivirus") ? "Defender scans, with results you can review." : ((!(name == "System integrity")) ? ((name == "Network") ? "Inspect connections, DNS and firewall." : "Discover your existing Tailscale devices.") : ((health == null) ? "Windows health has not been checked." : ("Evidence collected · " + num + " unknown checks."))), 10f, palette.Muted);
-				label6.Dock = DockStyle.Fill;
-				CleanButton cleanButton2 = Button((name == "Antivirus") ? "Open scans" : "Review", delegate
-				{
-					Navigate((name == "Antivirus") ? "Antivirus" : ((name == "System integrity") ? "System Integrity" : ((name == "Network") ? "Network Security" : "Tailscale Devices")));
-				}, primary: false);
-				cleanButton2.Dock = DockStyle.Bottom;
-				cleanButton2.Height = 36;
-				surface2.Controls.Add(label6);
-				surface2.Controls.Add(cleanButton2);
-				surface2.Controls.Add(label5);
-				tableLayoutPanel2.Controls.Add(surface2, num4 % 2, num4 / 2);
-				num4++;
-			}
-		}
-		if (num2 > 0)
-		{
-			AddBlock(tableLayoutPanel2, (int)TextSize((num2 <= 2) ? 140 : 280));
-		}
-		else
-		{
-			tableLayoutPanel2.Dispose();
-		}
-		}
-		Label c = Label(lastScan, 10f, palette.Muted);
-		AddBlock(c, (int)TextSize(25f));
-		if (!string.IsNullOrEmpty(recoveryNotice))
-		{
-			Note("Appearance settings", recoveryNotice);
-		}
-	}
-
+        else { Header("FishTank", "Review protection and choose a scan."); ActionRow(Button("Quick scan", () => RequestScan("Quick"), true), Button("Full scan", () => RequestScan("Full"), false)); }
+        AddAttentionOverview();
+        AddViewControls();
+        if (observing) { Note("Folder observer is running", "Your optional folder observer continues in the background. It reports activity and does not block threats."); ActionRow(Button("Stop folder observer", delegate { monitor.Dispose(); observing = false; RenderPage(); }, false)); }
+        if (!string.IsNullOrEmpty(lastScan)) Note("Latest scan", lastScan);
+        if (!string.IsNullOrEmpty(recoveryNotice)) Note("Appearance settings", recoveryNotice);
+    }
 	private async void StartWork(Func<string> action, string kind)
 	{
 		if (HasRunningOperation)
@@ -1827,3 +1712,4 @@ public sealed partial class Desktop : Form
 		}
 	}
 }
+

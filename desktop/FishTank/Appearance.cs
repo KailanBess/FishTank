@@ -128,7 +128,7 @@ public sealed class Appearance
     {
         var next = WithAquariumStyle();
         next.Theme = "Aquarium Violet"; next.Accent = "Violet";
-        next.CornerRadius = 24; next.SecondaryColor = "#40205C";
+        next.BackgroundStyle = "Plain"; next.CornerRadius = 10; next.SecondaryColor = "#40205C";
         return next;
     }
 
@@ -212,3 +212,4 @@ public sealed class Appearance
 		return Core.Parse<Appearance>(Core.Json(this));
 	}
 }
+
