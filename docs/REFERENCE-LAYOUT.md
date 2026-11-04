@@ -12,3 +12,6 @@ Reference correction: the dashboard now begins with a centered full-scan control
 
 The default reference preset uses a plain violet background, restrained card corners, a centered full-scan power control, and three cards showing saved protection evidence, actual monitoring state and recovery actions. Existing font size, density and accessibility choices are retained when applying the preset. Run tests/ReferenceLayout to verify delayed workspace readiness and render an isolated dashboard without starting a scan.
 
+
+The managed visibility bridge handles Aquarium show/hide commands on the WinForms UI thread. It restores child-control visibility after native parenting and refuses host show requests while the app is locked or parked. The isolated workspace fixture exercises the real Desktop with generated data and no scans.
+

@@ -103,7 +103,7 @@ public sealed partial class Desktop : Form
 
 	public Desktop()
 	{
-        AquariumWorkspace.Register(this);
+        AquariumWorkspace.Register(this, () => appLock != null && !appLock.IsLocked && (!AppAccess.Enabled || AppAccess.SessionUnlocked));
 		appearance = AppearanceStore.Load();
 		recoveryNotice = AppearanceStore.Notice;
 		Text = "FishTank · Security, clearly.";
