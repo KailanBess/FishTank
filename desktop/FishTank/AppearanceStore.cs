@@ -31,7 +31,7 @@ public static class AppearanceStore
 		Notice = "";
 		if (!File.Exists(FilePath))
 		{
-			return new Appearance();
+			return new Appearance().WithAquariumStyle();
 		}
 		try
 		{

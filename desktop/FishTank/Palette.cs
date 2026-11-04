@@ -25,6 +25,9 @@ public sealed class Palette
 
 	public static Color AccentColor(string name)
 	{
+        if (name == "Aquarium Mint") return Color.FromArgb(103, 232, 211);
+        if (name == "Aquarium Blue") return Color.FromArgb(113, 190, 255);
+        if (name == "Aquarium Coral") return Color.FromArgb(255, 170, 150);
 		if (FishBowlColors.Accents.TryGetValue(name, out var value))
 		{
 			return Color.FromArgb(value[0]);
@@ -91,6 +94,16 @@ public sealed class Palette
 			palette.Surface2 = Mix(palette.Surface, palette.Text, 0.055);
 			palette.Line = Mix(palette.Surface, palette.Text, 0.18);
 		}
+        if (a.Theme.StartsWith("Aquarium ", System.StringComparison.Ordinal))
+        {
+            palette.Background = a.Theme == "Aquarium Midnight" ? Color.FromArgb(12, 14, 22) : a.Theme == "Aquarium Slate" ? Color.FromArgb(27, 35, 43) : Color.FromArgb(9, 21, 29);
+            palette.Sidebar = Mix(palette.Background, Color.Black, .18);
+            palette.Surface = Color.FromArgb(16, 36, 47);
+            palette.Surface2 = Color.FromArgb(25, 47, 61);
+            palette.Text = Color.FromArgb(241, 247, 255);
+            palette.Muted = Color.FromArgb(160, 184, 195);
+            palette.Line = Color.FromArgb(34, 65, 78);
+        }
 		if (a.CustomPalette)
 		{
 			palette.Text = Override(a.TextColor, palette.Text);

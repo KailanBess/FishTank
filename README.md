@@ -1,5 +1,7 @@
 # FishTank
 
+Windows appearance: [Aquarium family themes and customization](docs/AQUARIUM-APPEARANCE.md).
+
 Windows application builds and a self-hosted email/SMS verification backend.
 
 Version 0.14 adds ransomware protection review, audit-first ASR/CFA controls, application/hardware security, software update inventory, opt-in persistence/network monitoring and incident-response cases. See [wider security coverage](docs/SECURITY-COVERAGE.md) and [0.14 validation](docs/SECURITY-COVERAGE-VALIDATION.md). Open Settings → All tools, or Ctrl+K. Windows changes require explicit preview/confirmation, administrator access and offline MFA; monitoring starts off.

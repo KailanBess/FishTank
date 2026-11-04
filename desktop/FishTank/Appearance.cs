@@ -107,9 +107,22 @@ public sealed class Appearance
 
 	public bool[] CardsVisible = new bool[4] { true, true, true, true };
 
-	public static readonly string[] Themes = new string[5] { "Dark", "Light", "Midnight", "Ocean", "Plum" }.Concat(FishBowlColors.Themes.Keys).Distinct().ToArray();
+	public static readonly string[] Themes = new[] { "Dark", "Light", "Midnight", "Ocean", "Plum", "Aquarium Ocean", "Aquarium Midnight", "Aquarium Slate" }.Concat(FishBowlColors.Themes.Keys).Distinct().ToArray();
 
-	public static readonly string[] Accents = new string[6] { "Cyan", "Violet", "Blue", "Pink", "Mint", "Sunset" }.Concat(FishBowlColors.Accents.Keys).Distinct().ToArray();
+	public static readonly string[] Accents = new[] { "Cyan", "Violet", "Blue", "Pink", "Mint", "Sunset", "Aquarium Mint", "Aquarium Blue", "Aquarium Coral" }.Concat(FishBowlColors.Accents.Keys).Distinct().ToArray();
+
+    public Appearance WithAquariumStyle()
+    {
+        var next = Copy();
+        next.Theme = "Aquarium Ocean";
+        next.Accent = "Aquarium Mint";
+        next.CustomPalette = false;
+        next.Shape = "Rounded";
+        next.CornerRadius = 16;
+        next.BackgroundStyle = "Gradient";
+        next.SecondaryColor = "#1B203B";
+        return next;
+    }
 
 	public static readonly string[] Fonts = new string[11]
 	{

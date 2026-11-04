@@ -232,6 +232,12 @@ public sealed class AppearanceDialog : Form
 		}
 		TableLayoutPanel tableLayoutPanel = Tab("Appearance");
 		Paragraph(tableLayoutPanel, "Preview changes on the app behind this window. These controls change presentation only.", 64);
+        Row(tableLayoutPanel, "Aquarium family", ActionButton("Use Aquarium style", delegate
+        {
+            Value = Value.WithAquariumStyle();
+            BuildTabs();
+            Changed();
+        }), 54);
 		sample = new Panel
 		{
 			BackColor = Palette.From(Value).Surface,
