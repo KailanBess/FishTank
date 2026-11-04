@@ -19,6 +19,8 @@ public sealed partial class Desktop
         var inspect = Button(health == null ? "Check this device" : "Refresh checks", () => StartWork(() => Core.Collect("Health"), "Health"), true);
         inspect.AutoSize = true; inspect.Margin = new Padding(0, 18, 0, 0);
         content.Controls.Add(eyebrow); content.Controls.Add(title); content.Controls.Add(detail); content.Controls.Add(inspect);
+        var schedule = Button("Scan schedule", OpenScanSchedule, false); schedule.AutoSize = true; content.Controls.Add(schedule);
+        var evidence = Button("Finding details", () => OpenToolsTab("Security reviews"), false); evidence.AutoSize = true; content.Controls.Add(evidence);
         content.SizeChanged += delegate { var width = Math.Max(160, content.ClientSize.Width - 20); title.MaximumSize = new Size(width, 0); detail.MaximumSize = new Size(width, 0); };
         hero.Controls.Add(content); layout.Controls.Add(hero, 0, 0);
         var side = Card(250); side.Dock = DockStyle.Fill; side.Margin = new Padding(0);
