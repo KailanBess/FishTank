@@ -14,6 +14,12 @@ internal static class AppearanceUiChecks
     private static byte[] IconBytes(Icon icon) { using (var bitmap = icon.ToBitmap()) using (var output = new MemoryStream()) { bitmap.Save(output, ImageFormat.Png); return output.ToArray(); } }
     internal static void Run(string output, Action<bool, string> check)
     {
+        var personalized = new FishTank.Appearance { Theme = "Light", FontFamily = "Verdana", Density = "Compact", ReducedMotion = true, CustomPalette = true };
+        var family = personalized.WithAquariumStyle();
+        family.Validate();
+        check(personalized.Theme == "Light" && personalized.CustomPalette, "Aquarium preview does not mutate the original appearance");
+        check(family.FontFamily == "Verdana" && family.Density == "Compact" && family.ReducedMotion, "Aquarium preset retains accessibility preferences");
+        check(family.Theme == "Aquarium Ocean" && family.Accent == "Aquarium Mint" && family.CornerRadius == 16 && !family.CustomPalette, "Aquarium preset uses named aquatic surfaces and rounded cards");
         var original = new FishTank.Appearance { ReducedMotion = true };
         AppearanceStore.Save(original);
         using (var owner = new Desktop())
@@ -22,7 +28,7 @@ internal static class AppearanceUiChecks
             owner.Bounds = new Rectangle(-30000, -30000, 1100, 800); owner.ShowInTaskbar = false; owner.Show(); Application.DoEvents();
             typeof(Desktop).GetMethod("Navigate", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(owner, new object[] { "Settings" });
             int tick = 0; string pendingTheme = null; DateTime previewDeadline = DateTime.MinValue; Exception failure = null;
-            string[] themes = { "Light", "Ocean", "Plum", "Dark" };
+            string[] themes = { "Aquarium Ocean", "Aquarium Midnight", "Aquarium Slate", "Light", "Ocean", "Plum", "Dark" };
             timer.Tick += delegate {
                 var dialog = Application.OpenForms.OfType<AppearanceDialog>().FirstOrDefault();
                 if (dialog == null) return;
