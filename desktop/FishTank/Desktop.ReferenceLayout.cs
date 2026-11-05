@@ -47,7 +47,7 @@ public sealed partial class Desktop
             cards.Height=(int)TextSize(columns==1?490:170); cards.ResumeLayout(true);
         };
         AddBlock(cards,(int)TextSize(170));
-        ActionRow(Button("Quick scan", () => RequestScan("Quick"), false), Button("Scan schedule", OpenScanSchedule, false), Button("Finding details", () => OpenToolsTab("Security reviews"), false));
+        ActionRow(Button("Quick scan", () => RequestScan("Quick"), false), Button("Scan schedule", OpenScanSchedule, false), Button("Finding details", () => OpenToolsTab("Security reviews"), false), Button("What changed?", OpenSecurityChanges, false));
     }
 }
 
@@ -66,4 +66,5 @@ public sealed class ReferenceScanButton : Button
         if(Focused)using(var focus=new Pen(ForeColor,1){DashStyle=DashStyle.Dot})g.DrawEllipse(focus,cx-size*.46f,cy-size*.46f,size*.92f,size*.92f);
     }
 }
+
 
