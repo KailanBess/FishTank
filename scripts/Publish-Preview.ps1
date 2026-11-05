@@ -1,7 +1,7 @@
-param([string]$Repository='KailanBess/FishTank',[string]$Commit=$env:GITHUB_SHA,[string]$RunId=$env:GITHUB_RUN_ID,[string]$Archive,[switch]$PrepareOnly,[string]$OutputDirectory)
+param([string]$Repository='KailanBess/FishTank',[string]$Commit=$env:GITHUB_SHA,[string]$RunId=$env:GITHUB_RUN_ID,[string]$Archive,[switch]$PrepareOnly,[string]$OutputDirectory,[switch]$IncludeServer,[string]$ServerArchive)
 $ErrorActionPreference='Stop'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-function Prepare([string]$Zip,[string]$Output){
+function Prepare([string]$Zip,[string]$Output,[string]$ServerZip){
  if(Test-Path -LiteralPath $Output){if(@(Get-ChildItem -LiteralPath $Output -Force).Count){throw 'Preview output must be empty.'}}else{New-Item -ItemType Directory -Path $Output | Out-Null}
  $archiveFile=[IO.Compression.ZipFile]::OpenRead([IO.Path]::GetFullPath($Zip))
  try{
@@ -42,11 +42,40 @@ function Prepare([string]$Zip,[string]$Output){
  if($desktop.Name -ne 'FishTank' -or $cli.Name -ne 'FishTank.Cli' -or $desktop.Version -ne $cli.Version){throw 'Preview executable identities/versions differ.'}
  $version=$desktop.Version.ToString();$tag='preview-v'+$(if($desktop.Version.Revision -eq 0){$desktop.Version.ToString(3)}else{$version})
  Copy-Item -LiteralPath $Zip -Destination (Join-Path $Output 'FishTank-desktop-preview.zip')
- $lines=@('FishTank.exe','FishTank.Cli.exe','FishTank-desktop-preview.zip') | ForEach-Object {((Get-FileHash -LiteralPath (Join-Path $Output $_) -Algorithm SHA256).Hash.ToLowerInvariant())+'  '+$_}
+ $names=@('FishTank.exe','FishTank.Cli.exe','FishTank-desktop-preview.zip')
+ if($ServerZip){
+  if(!(Test-Path -LiteralPath $ServerZip)){throw 'Complete release is missing its server kit.'}
+  $kit=[IO.Compression.ZipFile]::OpenRead([IO.Path]::GetFullPath($ServerZip))
+  try {
+   $allowed=@('README.txt','SHA256SUMS.txt','docs/SERVER-EXPANSION.md','docs/APP-EXPANSION.md')
+   $allowed+=@('server.py','passkeys.py','device_status.py','passkeys.html','passkeys.js','requirements.lock','requirements.txt','environment.example','environment.selfhosted.example','Caddyfile.example','gammu-sandbox.conf.example','fishtank-mfa.service','install-debian.sh','README.md','SELF-HOSTED-SETUP.md','FISHYSERVER-SETUP.md') | ForEach-Object {'server/'+$_}
+   $paths=@($kit.Entries | ForEach-Object FullName)
+   if($paths.Count -ne $allowed.Count -or @($paths | Sort-Object -Unique).Count -ne $allowed.Count -or @(Compare-Object ($paths | Sort-Object) ($allowed | Sort-Object)).Count){throw 'Unexpected server kit identity.'}
+   if(@($kit.Entries | Where-Object {$_.Length -gt 4MB}).Count){throw 'Server kit entry is oversized.'}
+   $reader=New-Object IO.StreamReader($kit.GetEntry('SHA256SUMS.txt').Open())
+   try{$serverManifest=$reader.ReadToEnd()}finally{$reader.Dispose()}
+   $serverHashes=@{}
+   foreach($line in ($serverManifest -split '\r?\n')){
+    if(!$line.Trim()){continue}
+    if($line -notmatch '^([0-9a-f]{64})  ([A-Za-z0-9/_.-]+)$' -or $serverHashes.ContainsKey($Matches[2])){throw 'Invalid server manifest.'}
+    $serverHashes[$Matches[2]]=$Matches[1]
+   }
+   if($serverHashes.Count -ne $allowed.Count-1){throw 'Server manifest is incomplete.'}
+   foreach($entry in $kit.Entries){
+    if($entry.FullName -eq 'SHA256SUMS.txt'){continue}
+    $sha=[Security.Cryptography.SHA256]::Create();$stream=$entry.Open()
+    try{$hash=([BitConverter]::ToString($sha.ComputeHash($stream))).Replace('-','').ToLowerInvariant()}finally{$sha.Dispose();$stream.Dispose()}
+    if($serverHashes[$entry.FullName] -ne $hash){throw 'Server kit checksum mismatch.'}
+   }
+  } finally {$kit.Dispose()}
+  Copy-Item -LiteralPath $ServerZip -Destination (Join-Path $Output 'FishTank-server-kit.zip')
+  $names+='FishTank-server-kit.zip'
+ }
+ $lines=$names | ForEach-Object {((Get-FileHash -LiteralPath (Join-Path $Output $_) -Algorithm SHA256).Hash.ToLowerInvariant())+'  '+$_}
  $lines | Set-Content -LiteralPath (Join-Path $Output 'SHA256SUMS.txt') -Encoding ASCII
- return [pscustomobject]@{Version=$version;Tag=$tag;Files=@('FishTank.exe','FishTank.Cli.exe','FishTank-desktop-preview.zip','SHA256SUMS.txt')}
+ return [pscustomobject]@{Version=$version;Tag=$tag;Files=@($names)+@('SHA256SUMS.txt')}
 }
-if($PrepareOnly){if(!$Archive -or !$OutputDirectory){throw 'PrepareOnly requires archive and empty output directory.'};Prepare $Archive $OutputDirectory | ConvertTo-Json -Compress;exit 0}
+if($PrepareOnly){if(!$Archive -or !$OutputDirectory){throw 'PrepareOnly requires archive and empty output directory.'};if($IncludeServer -and !$ServerArchive){throw 'IncludeServer requires ServerArchive during preparation.'};Prepare $Archive $OutputDirectory $ServerArchive | ConvertTo-Json -Compress;exit 0}
 if($Repository -ne 'KailanBess/FishTank' -or $Commit -notmatch '^[0-9a-f]{40}$' -or $RunId -notmatch '^[0-9]+$' -or !$env:GH_TOKEN){throw 'Publishing requires the expected repository, tested commit, run identity and scoped GitHub token.'}
 $parent=[IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\')+'\'
 $temporary=Join-Path $parent ('FishTank-preview-publish-'+[Guid]::NewGuid().ToString('N'))
@@ -55,7 +84,8 @@ try{
  $download=Join-Path $temporary 'artifact';$output=Join-Path $temporary 'release'
  & gh run download $RunId --repo $Repository --name FishTank-unsigned-development --dir $download
  if($LASTEXITCODE -ne 0){throw 'Tested preview artifact download failed.'}
- $metadata=Prepare (Join-Path $download 'FishTank-desktop-preview.zip') $output
+ $serverZip=$(if($IncludeServer){Join-Path $download 'FishTank-server-kit.zip'}else{''})
+ $metadata=Prepare (Join-Path $download 'FishTank-desktop-preview.zip') $output $serverZip
  $source=Get-Content -LiteralPath (Join-Path $PSScriptRoot '../desktop/Properties/AssemblyInfo.cs') -Raw
  if($source -notmatch 'AssemblyVersion\("([0-9.]+)"\)' -or [Version]$Matches[1] -ne [Version]$metadata.Version){throw 'Tested artifact does not match the checked-out source version.'}
  $list=& gh api "repos/$Repository/releases?per_page=100"
@@ -77,6 +107,8 @@ Unsigned FishTank development preview $($metadata.Version).
 
 Tested source commit: $Commit
 Checks and provenance: https://github.com/$Repository/actions/runs/$RunId
+
+This complete release includes the desktop GUI, CLI and embedded browser dashboard. When attached, FishTank-server-kit.zip is a separate Debian initial-deployment kit with example configuration; it is not an installed or running server.
 
 For first installation, extract FishTank-desktop-preview.zip into a new folder. In Settings > GitHub updates, choose Use preview updates once; then check, download/verify, and apply newer releases. Preview updates verify GitHub SHA-256 digests, component identity and version. They do not verify a Windows publisher signature. Applying remains a separate confirmation, preserves user data/runtime configuration, and retains executable rollback copies.
 

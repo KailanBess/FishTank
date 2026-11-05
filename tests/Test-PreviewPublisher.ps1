@@ -1,4 +1,4 @@
-param([string]$Archive=(Join-Path $PSScriptRoot '../packages/FishTank-desktop-preview.zip'))
+param([string]$Archive=(Join-Path $PSScriptRoot '../packages/FishTank-desktop-preview.zip'),[switch]$IncludeServer)
 $ErrorActionPreference='Stop'
 $scriptPath=Join-Path $PSScriptRoot '../scripts/Publish-Preview.ps1'
 $createdToken=!$env:GH_TOKEN
@@ -12,11 +12,12 @@ function gh {
   $destination=$arguments[[Array]::IndexOf($arguments,'--dir')+1]
   New-Item -ItemType Directory -Path $destination | Out-Null
   Copy-Item -LiteralPath $state.Archive -Destination (Join-Path $destination 'FishTank-desktop-preview.zip')
+  if($state.IncludeServer){Copy-Item -LiteralPath (Join-Path $PSScriptRoot '../packages/FishTank-server-kit.zip') -Destination $destination}
   return
  }
  if($arguments[0] -eq 'release' -and $arguments[1] -eq 'create'){
   $assets=@()
-  foreach($path in $arguments[3..6]){$assets+=[pscustomobject]@{name=[IO.Path]::GetFileName($path);digest=('sha256:'+(Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant())}}
+  foreach($path in $arguments[3..([Array]::IndexOf($arguments,'--repo')-1)]){$assets+=[pscustomobject]@{name=[IO.Path]::GetFileName($path);digest=('sha256:'+(Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant())}}
   $state.Created++
   $state.Release=[pscustomobject]@{id=1234;tag_name=$arguments[2];draft=$true;prerelease=$true;author=[pscustomobject]@{login='github-actions[bot]'};body='Unsigned FishTank development preview fixture';assets=$assets}
   return
@@ -49,7 +50,7 @@ function gh {
 }
 try{
  foreach($case in @('new','retry-owned-draft','existing-public','owner-draft','bad-digest')){
-  $state=@{Case=$case;Archive=[IO.Path]::GetFullPath($Archive);Release=$null;Created=0;Deleted=0;Published=0}
+  $state=@{Case=$case;IncludeServer=[bool]$IncludeServer;Archive=[IO.Path]::GetFullPath($Archive);Release=$null;Created=0;Deleted=0;Published=0}
   if($case -in @('retry-owned-draft','existing-public','owner-draft')){
    # Read only metadata from the actual archive to select this version's tag.
    Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -62,7 +63,7 @@ try{
    $state.Release=[pscustomobject]@{id=999;tag_name=$tag;draft=($case -ne 'existing-public');prerelease=$true;author=[pscustomobject]@{login=$(if($case -eq 'owner-draft'){'KailanBess'}else{'github-actions[bot]'})};body='Unsigned FishTank development preview fixture';assets=@()}
   }
   $global:FishTankPublisherFixture=$state;$failed=$false
-  try{& $scriptPath -Repository KailanBess/FishTank -Commit ('a'*40) -RunId '123' | Out-Null}catch{$failed=$true}
+  try{& $scriptPath -Repository KailanBess/FishTank -Commit ('a'*40) -RunId '123' -IncludeServer:$IncludeServer | Out-Null}catch{$failed=$true}
   if($case -in @('new','retry-owned-draft')){
    Assert (!$failed -and $state.Created -eq 1 -and $state.Published -eq 1) "Valid preview publisher failed: $case"
    Assert ($state.Deleted -eq $(if($case -eq 'retry-owned-draft'){1}else{0})) 'Publisher touched unexpected drafts'

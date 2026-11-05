@@ -1,0 +1,10 @@
+# Aquarium family release
+
+The coordinated release set is FishTank 0.16.0, FishBowl 1.29.5, FishNet 0.3.0 and Aquarium 0.4.0. Each application has its own repository, version, user profile and downloadable package.
+
+- FishTank: desktop GUI, CLI and embedded local browser dashboard in `FishTank-desktop-preview.zip`; separate `FishTank-server-kit.zip` for initial Debian deployment. The server ZIP contains example configuration only and is not an installed service. Checksums cover the release assets and kit contents. Windows executables remain unsigned and require explicit preview-update consent; stable signed updates retain their existing certificate requirement.
+- FishBowl: Windows app/installer ZIP and source archive, Linux AppImage and tarball, with checksums. Its release preparation uses a pull request and waits for the existing source build and overflow workflows before a normal merge. Repository approval policies are respected. The release workflow rebuilds and tests both platforms before publication. No games, firmware or emulator binaries are included.
+- FishNet: complete self-contained Windows x64 ZIP, SHA-256 manifest and source/build metadata. Media codecs and native playback remain Windows acceptance checks.
+- Aquarium: complete self-contained Windows x64 hub with pinned-source FishTank and FishNet bundles and verified included-package hashes. FishBowl remains an optional install from its own public release. The hub's package/registry tests and native publish gate run before publication.
+
+Downloads are published by GitHub Actions after the required jobs succeed. A pushed tag or workflow start does not establish that publication succeeded. CI artifacts and published releases are distinct. Inspect each repository's Actions/Release page for the result. All these Windows builds are unsigned; this release does not claim an independent security audit or completion of physical-device acceptance. User profiles, passwords, signing keys, runtime configuration and game files are excluded.

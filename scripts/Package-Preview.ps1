@@ -28,6 +28,7 @@ try{
   'desktop/bin/Release/cli/net48/FishTank.Cli.exe.config',
   'docs/UI-REVIEW.md',
   'docs/AQUARIUM-APPEARANCE.md',
+  'docs/FAMILY-RELEASE.md',
   'docs/APP-INSIGHTS.md',
   'docs/PREVIEW-UPDATES.md',
   'docs/RELEASE-AND-RECOVERY.md',

@@ -76,15 +76,23 @@ jobs:
       - name: Package unsigned preview
         shell: pwsh
         run: ./scripts/Package-Preview.ps1 -NoBuild
+      - name: Package initial Debian server deployment kit
+        run: python scripts/Package-Server.py
       - name: Verify preview release preparation and malformed archive rejection
         shell: pwsh
         run: ./tests/Test-PreviewRelease.ps1
+      - name: Verify complete server release asset
+        shell: pwsh
+        run: |
+          ./tests/Test-ServerKit.ps1
+          ./tests/Test-PreviewPublisher.ps1 -IncludeServer
       - name: Save unsigned Windows builds
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: FishTank-unsigned-development
           path: |
             packages/FishTank-desktop-preview.zip
+            packages/FishTank-server-kit.zip
       - name: Save UI review screenshots
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -159,4 +167,4 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: ./scripts/Publish-Preview.ps1
+        run: ./scripts/Publish-Preview.ps1 -IncludeServer
