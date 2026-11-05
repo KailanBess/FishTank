@@ -104,6 +104,13 @@ public sealed class Palette
             palette.Muted = Color.FromArgb(160, 184, 195);
             palette.Line = Color.FromArgb(34, 65, 78);
         }
+        if (a.Theme == "Aquarium Violet")
+        {
+            palette.Background = Color.FromArgb(24, 18, 40); palette.Sidebar = Color.FromArgb(15, 10, 28);
+            palette.Surface = Color.FromArgb(39, 29, 61); palette.Surface2 = Color.FromArgb(53, 39, 82);
+            palette.Line = Color.FromArgb(71, 52, 101); palette.Text = Color.FromArgb(244, 239, 255);
+            palette.Muted = Color.FromArgb(187, 175, 210);
+        }
 		if (a.CustomPalette)
 		{
 			palette.Text = Override(a.TextColor, palette.Text);
