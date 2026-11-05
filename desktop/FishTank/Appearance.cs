@@ -111,6 +111,8 @@ public sealed class Appearance
 
 	public static readonly string[] Accents = new[] { "Cyan", "Violet", "Blue", "Pink", "Mint", "Sunset", "Aquarium Mint", "Aquarium Blue", "Aquarium Coral" }.Concat(FishBowlColors.Accents.Keys).Distinct().ToArray();
 
+    public static Appearance Defaults() => new Appearance().WithAquariumStyle();
+
     public Appearance WithAquariumStyle()
     {
         var next = Copy();

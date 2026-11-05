@@ -76,11 +76,6 @@ public sealed class Palette
 		palette.Surface = (flag ? Color.White : Mix(color, Color.White, 0.045));
 		palette.Surface2 = (flag ? Color.FromArgb(236, 240, 247) : Mix(color, Color.White, 0.085));
 		palette.Accent = AccentColor(a.Accent);
-		if (a.Blending == "Harmonized")
-		{
-			palette.Surface = Mix(palette.Surface, palette.Accent, 0.025);
-			palette.Surface2 = Mix(palette.Surface2, palette.Accent, 0.035);
-		}
 		palette.Text = (flag ? Color.FromArgb(24, 36, 56) : Color.FromArgb(235, 240, 248));
 		palette.Muted = (flag ? Color.FromArgb(84, 99, 118) : Color.FromArgb(157, 172, 194));
 		palette.Line = (flag ? Color.FromArgb(216, 223, 234) : Color.FromArgb(52, 62, 78));
@@ -104,6 +99,11 @@ public sealed class Palette
             palette.Muted = Color.FromArgb(160, 184, 195);
             palette.Line = Color.FromArgb(34, 65, 78);
         }
+		if (a.Blending == "Harmonized")
+		{
+			palette.Surface = Mix(palette.Surface, palette.Accent, 0.025);
+			palette.Surface2 = Mix(palette.Surface2, palette.Accent, 0.035);
+		}
 		if (a.CustomPalette)
 		{
 			palette.Text = Override(a.TextColor, palette.Text);

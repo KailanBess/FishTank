@@ -17,6 +17,8 @@ jobs:
           dotnet-version: 8.0.x
       - name: Check checksum and navigation behavior
         run: dotnet run --project tests/Logic/Logic.csproj
+      - name: Check family appearance and saved-profile compatibility
+        run: dotnet run --project tests/Appearance/Appearance.csproj
       - name: Check local browser authentication and vault compatibility
         run: dotnet run --project tests/Browser/Browser.csproj
       - name: Parse embedded Windows PowerShell resources

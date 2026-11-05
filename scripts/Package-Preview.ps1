@@ -27,6 +27,7 @@ try{
   'desktop/bin/Release/cli/net48/FishTank.Cli.exe',
   'desktop/bin/Release/cli/net48/FishTank.Cli.exe.config',
   'docs/UI-REVIEW.md',
+  'docs/AQUARIUM-APPEARANCE.md',
   'docs/APP-INSIGHTS.md',
   'docs/PREVIEW-UPDATES.md',
   'docs/RELEASE-AND-RECOVERY.md',
@@ -55,9 +56,10 @@ Disk health and free space adds read-only device/capacity warnings; Backup and r
 Monitoring adds optional live Defender event alerts, encrypted local history and a separate keep-in-tray option. Both monitoring and tray mode default off. Read LIVE-DETECTION.md for coverage and privacy limits.
 Settings > Open browser dashboard adds a local-only paired browser interface. Passwords now groups email accounts and connected services with separate usernames/passwords. Read BROWSER-AND-ACCOUNT-ORGANIZATION.md for the one-time Windows URL permission (if needed), session controls, and vault migration before editing an existing vault.
 Dashboard adds attention items and clear protection status. Antivirus adds optional scan scheduling. Settings adds folder backup reminders, settings search and an editable support report. Activity timeline combines local security events. Read APP-INSIGHTS.md for scope, defaults and limits.
+New profiles use Aquarium Ocean/Mint styling. Existing saved appearances are retained; use Customize FishTank > Use Aquarium style to preview and save the family preset. Read AQUARIUM-APPEARANCE.md.
 Simple view is the default. Advanced view adds evidence and controls without changing protection.
 
-This is not an audited or production-approved security release. Automated Windows runtime and UI checks are recorded in the validation guides; independent security review and physical-device acceptance remain necessary. See LIVE-VALIDATION.md for live-checking tests and their limits.
+This is not an audited or production-approved security release. Automated Windows runtime and UI checks from earlier versions are recorded in the validation guides; native verification of 0.15.6 is pending (see AQUARIUM-APPEARANCE.md); independent security review and physical-device acceptance remain necessary. See LIVE-VALIDATION.md for live-checking tests and their limits.
 The executables are unsigned. Settings > GitHub updates offers opt-in preview updates without a certificate; see PREVIEW-UPDATES.md. These builds cannot pass the separate signed-update gate. All updates use a separate confirmed installer and newer-version/digest checks. Optional unsigned preview updates need no certificate or signing secrets. Stable signed updates additionally require a configured publisher certificate pin and valid signatures. Independent security review remains an external requirement.
 
 No private configuration, passwords, device tokens or databases are included.

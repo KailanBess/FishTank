@@ -85,7 +85,7 @@ public sealed class AppearanceDialog : Form
 		}));
 		flowLayoutPanel.Controls.Add(ActionButton("Defaults", delegate
 		{
-			Value = new Appearance();
+			Value = Appearance.Defaults();
 			BuildTabs();
 			Changed();
 		}));

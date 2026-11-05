@@ -31,7 +31,7 @@ public static class AppearanceStore
 		Notice = "";
 		if (!File.Exists(FilePath))
 		{
-			return new Appearance().WithAquariumStyle();
+			return Appearance.Defaults();
 		}
 		try
 		{
@@ -52,7 +52,7 @@ public static class AppearanceStore
 				}
 			}
 			Notice = "Appearance settings could not be read. Defaults are in use; the original file was retained.";
-			return new Appearance();
+			return Appearance.Defaults();
 		}
 	}
 

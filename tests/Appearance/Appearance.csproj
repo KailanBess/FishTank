@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../desktop/FishTank/Appearance.cs" Link="Appearance.cs" />
+    <Compile Include="../../desktop/FishTank/AppearanceStore.cs" Link="AppearanceStore.cs" />
+    <Compile Include="../../desktop/FishTank/Palette.cs" Link="Palette.cs" />
+    <Compile Include="../../desktop/FishTank/FishBowlColors.cs" Link="FishBowlColors.cs" />
+    <Compile Include="../../desktop/FishTank/ScanPaths.cs" Link="ScanPaths.cs" />
+  </ItemGroup>
+</Project>

@@ -47,6 +47,10 @@ internal static class AppearanceUiChecks
                     }
                     var controls = All(dialog);
                     if (tick == 0) {
+                        controls.OfType<Button>().Single(c => c.Text == "Use Aquarium style").PerformClick();
+                        check(dialog.Value.Theme == "Aquarium Ocean" && dialog.Value.Accent == "Aquarium Mint", "Family preset button did not apply its settings");
+                        check(AppearanceStore.Load().Theme == original.Theme, "Family preset saved before confirmation");
+                        controls = All(dialog);
                         var options = controls.OfType<RadioButton>().Where(c => (c.AccessibleName ?? "").StartsWith("Window frame:")).ToArray();
                         check(options.Length == 2 && options.Count(x => x.Checked) == 1, "Window frame choices are missing or not exclusive");
                         dialog.Value.WindowFrameColor = "#245CC5";
@@ -64,6 +68,22 @@ internal static class AppearanceUiChecks
             timer.Stop(); if (failure != null) throw failure;
             check(tick == 8 && owner.CurrentAppearance.Theme == original.Theme && owner.CurrentAppearance.WindowFrameMode == "Follow Windows", "Cancel did not restore app and frame preferences");
             check(AppearanceStore.Load().WindowFrameMode == "Follow Windows", "Preview saved frame changes without confirmation");
+            using (var saveTimer = new Timer { Interval = 220 }) {
+                int phase = 0; DateTime deadline = DateTime.UtcNow.AddSeconds(8);
+                saveTimer.Tick += delegate {
+                    var dialog = Application.OpenForms.OfType<AppearanceDialog>().FirstOrDefault();
+                    if (dialog == null) return;
+                    try {
+                        if (DateTime.UtcNow > deadline) throw new Exception("Family preset preview/save timed out");
+                        if (phase++ == 0) { All(dialog).OfType<Button>().Single(c => c.Text == "Use Aquarium style").PerformClick(); return; }
+                        if (owner.CurrentAppearance.Theme != "Aquarium Ocean") return;
+                        saveTimer.Stop(); All(dialog).OfType<Button>().Single(c => c.Text == "Save & close").PerformClick();
+                    } catch (Exception ex) { failure = ex; saveTimer.Stop(); dialog.DialogResult = DialogResult.Cancel; dialog.Close(); }
+                };
+                saveTimer.Start(); typeof(Desktop).GetMethod("Customize", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(owner, null);
+                saveTimer.Stop(); if (failure != null) throw failure;
+                check(owner.CurrentAppearance.Theme == "Aquarium Ocean" && AppearanceStore.Load().Theme == "Aquarium Ocean", "Family preset did not persist after Save & close");
+            }
             owner.Hide();
         }
     }

@@ -23,7 +23,7 @@ public sealed class ScenePanel : Panel
 		DoubleBuffered = true;
 		SetStyle(ControlStyles.ResizeRedraw, value: true);
 		BackColor = colors.Background;
-		if (!(appearance.BackgroundStyle == "Wallpaper") || !(appearance.WallpaperPath != ""))
+		if (SystemInformation.HighContrast || !(appearance.BackgroundStyle == "Wallpaper") || !(appearance.WallpaperPath != ""))
 		{
 			return;
 		}
@@ -48,6 +48,7 @@ public sealed class ScenePanel : Panel
 	protected override void OnPaintBackground(PaintEventArgs e)
 	{
 		base.OnPaintBackground(e);
+        if (SystemInformation.HighContrast) return;
 		if (base.Width < 1 || base.Height < 1)
 		{
 			return;

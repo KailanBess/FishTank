@@ -1,6 +1,6 @@
 # FishTank
 
-Windows appearance: [Aquarium family themes and customization](docs/AQUARIUM-APPEARANCE.md).
+Version 0.15.6 includes [Aquarium family themes and customization](docs/AQUARIUM-APPEARANCE.md). The latest source and ZIP include the merged style changes and review fixes. Native Windows verification of this build remains pending. New profiles use Aquarium Ocean/Mint; existing profiles keep their saved choices. Open Customize FishTank → Use Aquarium style to preview and save the preset.
 
 Windows application builds and a self-hosted email/SMS verification backend.
 
@@ -10,7 +10,7 @@ Version 0.13 adds backup failure alerts, a vault health dashboard, recorded secu
 
 The 0.12 expansion adds Ctrl+K tool search, favorites, scan queues, encrypted automatic backups, vault history/attachments/import/undo, notifications, profiles/layouts, offline help, signed device reports and optional server passkeys/status. Read [app expansion](docs/APP-EXPANSION.md) and [initial server deployment](docs/SERVER-EXPANSION.md). The server is not deployed and the preview is unsigned. Download the [server setup kit](packages/FishTank-server-kit.zip) when ready to install it.
 
-The [0.14.0 desktop preview](packages/FishTank-desktop-preview.zip) adds a [local browser dashboard and organized email/service password vault](docs/BROWSER-AND-ACCOUNT-ORGANIZATION.md). Open Settings → Open browser dashboard to pair locally; see the guide for Windows listener permissions and vault compatibility. It also includes [optional live Defender alerts and tray monitoring](docs/LIVE-DETECTION.md), alongside [disk-health and backup-age warnings](docs/DISK-HEALTH-AND-BACKUP-AGE.md), with separate creation/verification dates and configurable reminders. It retains passphrase-encrypted file containers and verified GitHub installation; see [protection and update setup](docs/PROTECTED-FILES-AND-GITHUB-UPDATES.md). Earlier [security/integrity tools](docs/SECURITY-AND-INTEGRITY.md) remain included. Windows, browser and server checks pass; see [0.13 validation evidence](docs/EVERYDAY-VALIDATION.md). Live server deployment, trusted signing and an independent audit remain pending. Original uploaded binaries below remain unchanged.
+The [0.15.6 desktop preview](packages/FishTank-desktop-preview.zip) adds a [local browser dashboard and organized email/service password vault](docs/BROWSER-AND-ACCOUNT-ORGANIZATION.md). Open Settings → Open browser dashboard to pair locally; see the guide for Windows listener permissions and vault compatibility. It also includes [optional live Defender alerts and tray monitoring](docs/LIVE-DETECTION.md), alongside [disk-health and backup-age warnings](docs/DISK-HEALTH-AND-BACKUP-AGE.md), with separate creation/verification dates and configurable reminders. It retains passphrase-encrypted file containers and verified GitHub installation; see [protection and update setup](docs/PROTECTED-FILES-AND-GITHUB-UPDATES.md). Earlier [security/integrity tools](docs/SECURITY-AND-INTEGRITY.md) remain included. Windows, browser and server checks pass; see [0.13 validation evidence](docs/EVERYDAY-VALIDATION.md). Live server deployment, trusted signing and an independent audit remain pending. Original uploaded binaries below remain unchanged.
 
 ## Files
 
