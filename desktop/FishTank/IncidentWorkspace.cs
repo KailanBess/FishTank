@@ -31,6 +31,33 @@ internal static class IncidentWorkspace
     {
         lock (Gate) { var ids = Ids(); if (ids.Length >= 20) throw new InvalidOperationException("At most 20 local cases are supported. Review or reopen an existing case instead."); var item = new IncidentCase { Title = title }; Validate(item); item.Timeline.Add(new IncidentEntry { Action = "Case opened", Detail = "Local operator investigation; no threat or containment success is inferred." }); ProtectedStore.Write(Key(item.Id), item); ProtectedStore.Write("incident-case-index", ids.Concat(new[] { item.Id }).ToArray()); return item; }
     }
+    internal static IncidentCase CreateFromDetection(LiveDetectionEvent item)
+    {
+        lock (Gate)
+        {
+            var ids = Ids();
+            foreach (var id in ids)
+            {
+                var existing = Load(id);
+                if (existing.Notes == DetectionReference(item)) return existing;
+            }
+            if (ids.Length >= 20) throw new InvalidOperationException("The local incident limit is reached.");
+            var incident = new IncidentCase { Title = item.Kind, Notes = DetectionReference(item) };
+            incident.Timeline.Add(new IncidentEntry
+            {
+                Action = "Defender alert recorded",
+                Detail = "Operator requested local incident tracking. No file or security policy was changed."
+            });
+            Validate(incident);
+            ProtectedStore.Write(Key(incident.Id), incident);
+            ProtectedStore.Write("incident-case-index", ids.Concat(new[] { incident.Id }).ToArray());
+            return incident;
+        }
+    }
+
+    private static string DetectionReference(LiveDetectionEvent item) =>
+        $"Defender Operational event {item.EventId}, record {item.RecordId}, observed {item.EventUtc:O}.";
+
     internal static void Update(string id, string notes, bool closed)
     {
         lock (Gate) { var item = Load(id); item.Notes = notes; if (item.Closed != closed) item.Timeline.Add(new IncidentEntry { Action = closed ? "Case closed by operator" : "Case reopened by operator", Detail = "Case workflow state only; not proof of eradication or recovery." }); item.Closed = closed; Validate(item); ProtectedStore.Write(Key(id), item); }
