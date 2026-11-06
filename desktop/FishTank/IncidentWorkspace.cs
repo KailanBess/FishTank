@@ -8,6 +8,7 @@ namespace FishTank;
 public sealed class IncidentCase
 {
     public string Id = Guid.NewGuid().ToString("N"), Title, Notes = "";
+    public string SourceEventKey;
     public DateTime CreatedUtc = DateTime.UtcNow;
     public bool Closed;
     public List<IncidentEntry> Timeline = new List<IncidentEntry>();
@@ -35,14 +36,21 @@ internal static class IncidentWorkspace
     {
         lock (Gate)
         {
+            if (item.RecordId <= 0 || item.EventUtc == DateTime.MinValue)
+                throw new ArgumentException("A verified Defender event identity is required.", nameof(item));
+
             var ids = Ids();
+            string reference = DetectionReference(item);
+            string sourceKey = FormattableString.Invariant($"Defender:{item.EventId}:{item.RecordId}:{item.EventUtc.Ticks}");
             foreach (var id in ids)
             {
                 var existing = Load(id);
-                if (existing.Notes == DetectionReference(item)) return existing;
+                if (existing.SourceEventKey == sourceKey ||
+                    (existing.SourceEventKey == null && existing.Notes == reference))
+                    return existing;
             }
             if (ids.Length >= 20) throw new InvalidOperationException("The local incident limit is reached.");
-            var incident = new IncidentCase { Title = item.Kind, Notes = DetectionReference(item) };
+            var incident = new IncidentCase { Title = item.Kind, Notes = reference, SourceEventKey = sourceKey };
             incident.Timeline.Add(new IncidentEntry
             {
                 Action = "Defender alert recorded",
