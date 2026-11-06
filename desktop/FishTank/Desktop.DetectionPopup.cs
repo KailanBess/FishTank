@@ -35,7 +35,6 @@ public sealed partial class Desktop
                 if (!popup.IsDisposed)
                 {
                     popup.Status.Text = "Incident saved. Review it later in FishTank.";
-                    popup.StopExpiry();
                 }
             }
             catch (Exception)
@@ -106,8 +105,6 @@ public sealed partial class Desktop
             Show();
             expiry.Start();
         }
-
-        internal void StopExpiry() => expiry.Stop();
 
         protected override void Dispose(bool disposing)
         {
