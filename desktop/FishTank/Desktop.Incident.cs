@@ -11,9 +11,14 @@ public sealed partial class Desktop
 {
     private void OpenIncidentWorkspace()
     {
-        using (var dialog = UtilityDialog("Incident response workspace", out var panel))
+        using (var dialog = UtilityDialog("Incident inbox", out var panel))
         {
             Help(panel, "Keep a local timeline, notes and selected evidence. No automatic isolation, process termination, file execution, credential rotation or remote sharing occurs. Operator confirmations are recorded separately from observed evidence. If compromise is suspected, use a separate trusted device for account recovery.");
+            var filter = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, AccessibleName = "Filter incident inbox" };
+            filter.Items.AddRange(new[] { "Needs review", "Operator closed", "All cases" });
+            filter.SelectedIndex = 0;
+            var counts = new Label { AutoSize = true, AccessibleName = "Incident counts" };
+            var source = new Label { AutoSize = true, AccessibleName = "Incident source and time" };
             var cases = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, AccessibleName = "Local incident case" }; var ids = new List<string>();
             var title = new TextBox { MaxLength = 120, AccessibleName = "New incident title" };
             var notes = new TextBox { Multiline = true, Height = 130, MaxLength = 10000, ScrollBars = ScrollBars.Vertical, AccessibleName = "Private incident notes" };
@@ -22,12 +27,41 @@ public sealed partial class Desktop
             var area = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, AccessibleName = "Recorded evidence category" }; area.Items.AddRange(CoverageCatalog.Areas); area.SelectedIndex = 0;
             var evidence = new ListBox { Height = 130, HorizontalScrollbar = true, AccessibleName = "Recorded observations to preserve" }; var observations = new List<EvidenceItem>(); EvidenceSnapshot snapshot = null;
             string Selected() { if (cases.SelectedIndex < 0) throw new InvalidOperationException("Create or select a case first."); return ids[cases.SelectedIndex]; }
-            Action loadCase = () => { if (cases.SelectedIndex < 0) return; var item = IncidentWorkspace.Load(Selected()); notes.Text = item.Notes; closed.Checked = item.Closed; timeline.Items.Clear(); foreach (var row in item.Timeline) timeline.Items.Add(row.RecordedUtc.ToLocalTime().ToString("g") + " · " + row.Action + " · " + row.Detail); };
-            Action<string> refresh = select => { ids = IncidentWorkspace.Ids().ToList(); cases.Items.Clear(); foreach (var id in ids) { var item = IncidentWorkspace.Load(id); cases.Items.Add(item.Title + (item.Closed ? " · closed" : " · open")); } if (ids.Count > 0) cases.SelectedIndex = Math.Max(0, ids.IndexOf(select)); };
+            Action loadCase = () =>
+            {
+                timeline.Items.Clear();
+                if (cases.SelectedIndex < 0)
+                {
+                    notes.Clear(); closed.Checked = false; source.Text = "No cases in this view.";
+                    notes.Enabled = closed.Enabled = false;
+                    return;
+                }
+                var item = IncidentWorkspace.Load(Selected());
+                notes.Enabled = closed.Enabled = true;
+                notes.Text = item.Notes; closed.Checked = item.Closed;
+                source.Text = (string.IsNullOrEmpty(item.SourceEventKey) ? "Local case" : "Microsoft Defender event")
+                    + " · Case recorded " + item.CreatedUtc.ToLocalTime().ToString("g");
+                foreach (var row in item.Timeline)
+                    timeline.Items.Add(row.RecordedUtc.ToLocalTime().ToString("g") + " · " + row.Action + " · " + row.Detail);
+            };
+            Action<string> refresh = select =>
+            {
+                var all = IncidentWorkspace.Ids().Select(IncidentWorkspace.Load)
+                    .OrderByDescending(item => item.CreatedUtc).ToList();
+                var shown = all.Where(item => filter.SelectedIndex == 2 || item.Closed == (filter.SelectedIndex == 1)).ToList();
+                counts.Text = all.Count(item => !item.Closed) + " needs review · " + all.Count(item => item.Closed) + " operator closed";
+                ids = shown.Select(item => item.Id).ToList();
+                cases.Items.Clear();
+                foreach (var item in shown) cases.Items.Add(item.Title + (item.Closed ? " · closed" : " · needs review"));
+                if (ids.Count > 0) cases.SelectedIndex = Math.Max(0, ids.IndexOf(select));
+                else loadCase();
+            };
             Action loadEvidence = () => { snapshot = CoverageHistory.Read((string)area.SelectedItem).LastOrDefault(); observations = snapshot?.Items ?? new List<EvidenceItem>(); evidence.Items.Clear(); foreach (var item in observations) evidence.Items.Add(item.State + " · " + item.Name); };
             cases.SelectedIndexChanged += delegate { loadCase(); }; area.SelectedIndexChanged += delegate { loadEvidence(); };
-            panel.Controls.Add(cases); Help(panel, "Title for a new case:"); panel.Controls.Add(title);
-            panel.Controls.Add(UtilityButton("Create a local case", () => { var item = IncidentWorkspace.Create(title.Text); refresh(item.Id); }));
+            filter.SelectedIndexChanged += delegate { refresh(cases.SelectedIndex >= 0 ? Selected() : null); };
+            panel.Controls.Add(counts); panel.Controls.Add(filter); panel.Controls.Add(cases); panel.Controls.Add(source);
+            Help(panel, "Title for a new case:"); panel.Controls.Add(title);
+            panel.Controls.Add(UtilityButton("Create a local case", () => { var item = IncidentWorkspace.Create(title.Text); if (filter.SelectedIndex == 1) filter.SelectedIndex = 0; refresh(item.Id); }));
             Help(panel, "Private notes (save deliberately before switching cases):"); panel.Controls.Add(notes); panel.Controls.Add(closed);
             panel.Controls.Add(UtilityButton("Save notes and workflow state", () => { string id = Selected(); IncidentWorkspace.Update(id, notes.Text, closed.Checked); refresh(id); }));
             panel.Controls.Add(timeline); Help(panel, "Choose already-recorded evidence, then select one observation to preserve:"); panel.Controls.Add(area); panel.Controls.Add(evidence);
