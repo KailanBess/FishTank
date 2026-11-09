@@ -1188,6 +1188,7 @@ public sealed partial class Desktop : Form
 		Header("Your security, at a glance", "A calm place to check this PC and decide what needs attention.");
         AddAttentionOverview();
 		AddViewControls();
+		ActionRow(Button("Compare recorded checks", OpenSecurityChanges, false));
 		if (liveDetection != null && liveDetection.Enabled)
 		{
 			Note("Live Defender alerts", liveDetection.Status);
