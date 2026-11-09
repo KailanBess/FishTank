@@ -8,13 +8,19 @@ namespace FishTank;
 public sealed partial class Desktop
 {
     private DetectionPopup detectionPopup;
+    private DateTime detectionPopupSnoozedUntilUtc;
 
     private void ShowDetectionPopup(LiveDetectionEvent item)
     {
-        if (detectionPopup != null && !detectionPopup.IsDisposed) return;
+        if (DateTime.UtcNow < detectionPopupSnoozedUntilUtc || detectionPopup != null && !detectionPopup.IsDisposed) return;
         var popup = new DetectionPopup(item.Kind);
         detectionPopup = popup;
         popup.FormClosed += (_, _) => { if (detectionPopup == popup) detectionPopup = null; };
+        popup.Snooze.Click += (_, _) =>
+        {
+            detectionPopupSnoozedUntilUtc = DateTime.UtcNow.AddMinutes(15);
+            popup.Close();
+        };
         popup.Details.Click += (_, _) =>
         {
             popup.Close();
@@ -58,6 +64,7 @@ public sealed partial class Desktop
     private sealed class DetectionPopup : Form
     {
         internal readonly Button Action = new Button { Text = "Take action", AutoSize = true };
+        internal readonly Button Snooze = new Button { Text = "Snooze 15 min", AutoSize = true };
         internal readonly Button Details = new Button { Text = "View details", AutoSize = true };
         internal readonly Label Status = new Label { AutoSize = true, MaximumSize = new Size(364, 0) };
         private readonly Timer expiry = new Timer { Interval = 25000 };
@@ -82,10 +89,10 @@ public sealed partial class Desktop
             };
             var heading = new Label { Text = kind, AutoSize = true };
             Status.Text = "Take action saves a local incident for review. It leaves the file and Defender settings as they are.";
-            var actions = new FlowLayoutPanel { AutoSize = true, WrapContents = false };
+            var actions = new FlowLayoutPanel { AutoSize = true, MaximumSize = new Size(364, 0), WrapContents = true };
             var ignore = new Button { Text = "Ignore", AutoSize = true };
             ignore.Click += (_, _) => Close();
-            foreach (var button in new[] { Action, Details, ignore })
+            foreach (var button in new[] { Action, Details, Snooze, ignore })
             {
                 button.FlatStyle = FlatStyle.Flat;
                 actions.Controls.Add(button);
