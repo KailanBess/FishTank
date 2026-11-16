@@ -19,6 +19,19 @@ public sealed class IncidentEvidence { public DateTime PreservedUtc = DateTime.U
 internal static class IncidentWorkspace
 {
     private static readonly object Gate = new object();
+    internal static string ExportDiagnostics(string id)
+    {
+        var item = Load(id);
+        return Core.Json(new
+        {
+            SchemaVersion = 1,
+            Source = string.IsNullOrEmpty(item.SourceEventKey) ? "Local case" : "Microsoft Defender",
+            item.CreatedUtc,
+            item.Closed,
+            TimelineEntryCount = item.Timeline.Count,
+            EvidenceCount = item.Evidence.Count
+        });
+    }
     internal static string[] Ids() => ProtectedStore.Read("incident-case-index", () => new string[0]) ?? throw new IOException("Incident index unreadable.");
     private static string Key(string id) { if (!Guid.TryParseExact(id, "N", out _)) throw new ArgumentException("Invalid incident identity."); return "incident-case-" + id; }
     internal static IncidentCase Load(string id) { var item = ProtectedStore.Read<IncidentCase>(Key(id), () => null) ?? throw new IOException("Incident case missing or unreadable."); Validate(item); if (item.Id != id) throw new IOException("Case identity mismatch."); return item; }
