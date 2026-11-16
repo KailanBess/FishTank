@@ -11,6 +11,10 @@ public sealed partial class Desktop
 {
     private int incidentInboxFilter;
     private string incidentInboxCase;
+    private bool incidentInboxGroupByType;
+
+    private static string IncidentGroup(IncidentCase item) =>
+        (string.IsNullOrEmpty(item.SourceEventKey) ? "local:" + item.Id : "defender:" + item.Title);
 
     private void OpenIncidentWorkspace()
     {
@@ -20,6 +24,7 @@ public sealed partial class Desktop
             var filter = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, AccessibleName = "Filter incident inbox" };
             filter.Items.AddRange(new[] { "Needs review", "Operator closed", "All cases" });
             filter.SelectedIndex = incidentInboxFilter;
+            var groupByType = new CheckBox { Text = "Group Defender cases by alert type", Checked = incidentInboxGroupByType, AutoSize = true };
             var counts = new Label { AutoSize = true, AccessibleName = "Incident counts" };
             var source = new Label { AutoSize = true, AccessibleName = "Incident source and time" };
             var cases = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, AccessibleName = "Local incident case" }; var ids = new List<string>();
@@ -52,17 +57,26 @@ public sealed partial class Desktop
                 var all = IncidentWorkspace.Ids().Select(IncidentWorkspace.Load)
                     .OrderByDescending(item => item.CreatedUtc).ToList();
                 var shown = all.Where(item => filter.SelectedIndex == 2 || item.Closed == (filter.SelectedIndex == 1)).ToList();
+                if (groupByType.Checked)
+                    shown = shown.GroupBy(IncidentGroup).SelectMany(group => group).ToList();
                 counts.Text = all.Count(item => !item.Closed) + " needs review · " + all.Count(item => item.Closed) + " operator closed";
                 ids = shown.Select(item => item.Id).ToList();
                 cases.Items.Clear();
-                foreach (var item in shown) cases.Items.Add(item.Title + (item.Closed ? " · closed" : " · needs review"));
+                var groupSizes = shown.GroupBy(IncidentGroup).ToDictionary(group => group.Key, group => group.Count());
+                foreach (var item in shown)
+                {
+                    int count = groupSizes[IncidentGroup(item)];
+                    string groupLabel = groupByType.Checked && count > 1 ? " · " + count + " cases of this alert type" : "";
+                    cases.Items.Add(item.Title + (item.Closed ? " · closed" : " · needs review") + groupLabel);
+                }
                 if (ids.Count > 0) cases.SelectedIndex = Math.Max(0, ids.IndexOf(select));
                 else loadCase();
             };
             Action loadEvidence = () => { snapshot = CoverageHistory.Read((string)area.SelectedItem).LastOrDefault(); observations = snapshot?.Items ?? new List<EvidenceItem>(); evidence.Items.Clear(); foreach (var item in observations) evidence.Items.Add(item.State + " · " + item.Name); };
             cases.SelectedIndexChanged += delegate { loadCase(); }; area.SelectedIndexChanged += delegate { loadEvidence(); };
             filter.SelectedIndexChanged += delegate { refresh(cases.SelectedIndex >= 0 ? Selected() : null); };
-            panel.Controls.Add(counts); panel.Controls.Add(filter); panel.Controls.Add(cases); panel.Controls.Add(source);
+            groupByType.CheckedChanged += delegate { refresh(cases.SelectedIndex >= 0 ? Selected() : null); };
+            panel.Controls.Add(counts); panel.Controls.Add(filter); panel.Controls.Add(groupByType); panel.Controls.Add(cases); panel.Controls.Add(source);
             Help(panel, "Title for a new case:"); panel.Controls.Add(title);
             panel.Controls.Add(UtilityButton("Create a local case", () => { var item = IncidentWorkspace.Create(title.Text); if (filter.SelectedIndex == 1) filter.SelectedIndex = 0; refresh(item.Id); }));
             Help(panel, "Private notes (save deliberately before switching cases):"); panel.Controls.Add(notes); panel.Controls.Add(closed);
@@ -89,6 +103,7 @@ public sealed partial class Desktop
             dialog.FormClosing += delegate(object sender, FormClosingEventArgs e) { if (everydayWorking) e.Cancel = true; };
             dialog.ShowDialog(this);
             incidentInboxFilter = filter.SelectedIndex;
+            incidentInboxGroupByType = groupByType.Checked;
             if (cases.SelectedIndex >= 0) incidentInboxCase = Selected();
         }
     }
