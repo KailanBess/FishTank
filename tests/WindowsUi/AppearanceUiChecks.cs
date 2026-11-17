@@ -16,6 +16,8 @@ internal static class AppearanceUiChecks
     {
         var personalized = new FishTank.Appearance { Theme = "Light", FontFamily = "Verdana", Density = "Compact", ReducedMotion = true, CustomPalette = true };
         var family = personalized.WithAquariumStyle();
+        var reference = personalized.WithReferenceStyle(); reference.Validate();
+        check(reference.Theme == "Aquarium Violet" && reference.FontFamily == "Verdana" && reference.Density == "Compact" && reference.ReducedMotion, "Reference dashboard preserves accessibility preferences");
         family.Validate();
         check(personalized.Theme == "Light" && personalized.CustomPalette, "Aquarium preview does not mutate the original appearance");
         check(family.FontFamily == "Verdana" && family.Density == "Compact" && family.ReducedMotion, "Aquarium preset retains accessibility preferences");

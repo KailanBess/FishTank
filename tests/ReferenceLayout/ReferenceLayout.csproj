@@ -1,0 +1,2 @@
+<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net48</TargetFramework><UseWindowsForms>true</UseWindowsForms><LangVersion>12</LangVersion><AssemblyName>WindowsUi</AssemblyName></PropertyGroup><ItemGroup><ProjectReference Include="../../desktop/FishTank.csproj"/><PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net48" Version="1.0.3" PrivateAssets="all"/></ItemGroup></Project>
+
