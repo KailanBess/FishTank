@@ -118,7 +118,7 @@ internal static class Program
                 live.Stop(); Check(!live.Enabled && live.Status.StartsWith("Off"), "Stopping live session did not leave it off");
                 Check(live.Events().Any(x => x.Kind == "Session started") && live.Events().Any(x => x.Kind == "Session stopped"), "Live start/stop history missing");
             }
-            string personal = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "FishTank-safe-fixture-" + Guid.NewGuid().ToString("N"));
+            string personal = Path.Combine(Environment.GetEnvironmentVariable("FISHTANK_TEST_PERSONAL_ROOT") ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "FishTank-safe-fixture-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(personal);
             try
             {
