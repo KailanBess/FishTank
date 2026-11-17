@@ -103,6 +103,7 @@ public sealed partial class Desktop : Form
 
 	public Desktop()
 	{
+        AquariumWorkspace.Register(this, () => appLock != null && !appLock.IsLocked && (!AppAccess.Enabled || AppAccess.SessionUnlocked));
 		appearance = AppearanceStore.Load();
 		recoveryNotice = AppearanceStore.Notice;
 		Text = "FishTank · Security, clearly.";
@@ -454,7 +455,7 @@ public sealed partial class Desktop : Form
 		nav = new Panel
 		{
 			Dock = DockStyle.Left,
-			Width = (int)(245 * appearance.TextScale / 100f),
+			Width = (int)(224 * appearance.TextScale / 100f),
 			BackColor = palette.Sidebar,
 			Padding = new Padding(16, 22, 14, 16)
 		};
@@ -1183,9 +1184,10 @@ public sealed partial class Desktop : Form
 		}
 	}
 
-	private void Dashboard()
-	{
-		Header("Your security, at a glance", "A calm place to check this PC and decide what needs attention.");
+    private void Dashboard()
+    {
+        if (appearance.ShowBanner) AddReferenceSecurityOverview();
+        else { Header("FishTank", "Review protection and choose a scan."); ActionRow(Button("Quick scan", () => RequestScan("Quick"), true), Button("Full scan", () => RequestScan("Full"), false)); }
         AddAttentionOverview();
 		AddViewControls();
 		ActionRow(Button("Incident inbox", OpenIncidentWorkspace, false), Button("Compare recorded checks", OpenSecurityChanges, false));
@@ -1902,3 +1904,4 @@ public sealed partial class Desktop : Form
 		}
 	}
 }
+
