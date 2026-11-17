@@ -22,6 +22,18 @@ internal static class AppearanceUiChecks
         check(personalized.Theme == "Light" && personalized.CustomPalette, "Aquarium preview does not mutate the original appearance");
         check(family.FontFamily == "Verdana" && family.Density == "Compact" && family.ReducedMotion, "Aquarium preset retains accessibility preferences");
         check(family.Theme == "Aquarium Ocean" && family.Accent == "Aquarium Mint" && family.CornerRadius == 16 && !family.CustomPalette, "Aquarium preset uses named aquatic surfaces and rounded cards");
+        using (var dashboard = new Desktop())
+        {
+            dashboard.ClientSize = new Size(1100, 800);
+            dashboard.RenderPreview(Path.Combine(output, "dashboard-large-text.png"), "Dashboard",
+                new FishTank.Appearance { ReducedMotion = true, TextScale = 150 }.WithReferenceStyle());
+            var cards = All(dashboard).OfType<TableLayoutPanel>().Single(control => control.AccessibleName == "Protection overview cards");
+            check(cards.ColumnCount == 1 && cards.RowCount == 3, "Large text stacks dashboard cards");
+            check(cards.Controls.Count == 3 && cards.Controls.Cast<Control>().All(control => control.Height >= 200),
+                "Stacked dashboard cards retain a readable height");
+            var rows = cards.Controls.Cast<Control>().Select(control => cards.GetCellPosition(control).Row).Distinct().Count();
+            check(rows == 3, "Dashboard cards occupy separate rows");
+        }
         var original = new FishTank.Appearance { ReducedMotion = true };
         AppearanceStore.Save(original);
         using (var owner = new Desktop())

@@ -23,7 +23,7 @@ public sealed partial class Desktop
         EvidenceSnapshot snapshot = null; try { snapshot = SecurityReviews.Latest("SecurityHealth"); } catch { }
         string state = ProtectionOverview.Status(snapshot, DateTime.UtcNow);
         string observed = snapshot == null ? "No saved assessment. Run a protection check to collect evidence." : "Last checked " + snapshot.CapturedUtc.ToLocalTime().ToString("g");
-        var cards = new TableLayoutPanel { ColumnCount = 3, RowCount = 1, BackColor = palette.Background, Margin = new Padding(0), Padding = new Padding(0) };
+        var cards = new TableLayoutPanel { AccessibleName = "Protection overview cards", ColumnCount = 3, RowCount = 1, BackColor = palette.Background, Margin = new Padding(0), Padding = new Padding(0) };
         for (int i=0;i<3;i++) cards.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f/3));
         Surface Tile(string title, string value, string detail, string action, Action run)
         {
