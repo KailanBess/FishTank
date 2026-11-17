@@ -38,16 +38,16 @@ public sealed partial class Desktop
         cards.Controls.Add(Tile("LIVE DEFENDER ALERTS", liveDetection != null && liveDetection.Enabled ? "Listening" : "Off", "Optional activity alerts from Microsoft Defender.", "Monitoring", () => Navigate("Real-time monitoring")),1,0);
         cards.Controls.Add(Tile("RECOVERY & REPORTS", "Your safety net", "Verify a backup, review recovery guidance or export an edited report.", "Recovery center", OpenRecoveryCenter),2,0);
         cards.SizeChanged += delegate {
-            int columns = cards.ClientSize.Width < 700 ? 1 : 3;
+            int columns = cards.ClientSize.Width < TextSize(700) ? 1 : 3;
             if(cards.ColumnCount==columns)return;
             cards.SuspendLayout(); cards.ColumnCount=columns;cards.RowCount=columns==1?3:1; cards.ColumnStyles.Clear();cards.RowStyles.Clear();
             for(int i=0;i<columns;i++)cards.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100f/columns));
             for(int i=0;i<cards.RowCount;i++)cards.RowStyles.Add(new RowStyle(SizeType.Percent,100f/cards.RowCount));
             var controls=cards.Controls.Cast<Control>().ToArray();for(int i=0;i<controls.Length;i++)cards.SetCellPosition(controls[i],new TableLayoutPanelCellPosition(i%columns,i/columns));
-            cards.Height=(int)TextSize(columns==1?490:170); cards.ResumeLayout(true);
+            cards.Height=(int)TextSize(170 * cards.RowCount); cards.ResumeLayout(true);
         };
         AddBlock(cards,(int)TextSize(170));
-        ActionRow(Button("Quick scan", () => RequestScan("Quick"), false), Button("Scan schedule", OpenScanSchedule, false), Button("Finding details", () => OpenToolsTab("Security reviews"), false), Button("What changed?", OpenSecurityChanges, false));
+        ActionRow(Button("Quick scan", () => RequestScan("Quick"), false), Button("Scan schedule", OpenScanSchedule, false));
     }
 }
 
