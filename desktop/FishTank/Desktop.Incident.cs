@@ -9,6 +9,13 @@ using System.Windows.Forms;
 namespace FishTank;
 public sealed partial class Desktop
 {
+    private int incidentInboxFilter;
+    private string incidentInboxCase;
+    private bool incidentInboxGroupByType;
+
+    private static string IncidentGroup(IncidentCase item) =>
+        (string.IsNullOrEmpty(item.SourceEventKey) ? "local:" + item.Id : "defender:" + item.Title);
+
     private void OpenIncidentWorkspace()
     {
         using (var dialog = UtilityDialog("Incident inbox", out var panel))
@@ -16,7 +23,8 @@ public sealed partial class Desktop
             Help(panel, "Keep a local timeline, notes and selected evidence. No automatic isolation, process termination, file execution, credential rotation or remote sharing occurs. Operator confirmations are recorded separately from observed evidence. If compromise is suspected, use a separate trusted device for account recovery.");
             var filter = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, AccessibleName = "Filter incident inbox" };
             filter.Items.AddRange(new[] { "Needs review", "Operator closed", "All cases" });
-            filter.SelectedIndex = 0;
+            filter.SelectedIndex = incidentInboxFilter;
+            var groupByType = new CheckBox { Text = "Group Defender cases by alert type", Checked = incidentInboxGroupByType, AutoSize = true };
             var counts = new Label { AutoSize = true, AccessibleName = "Incident counts" };
             var source = new Label { AutoSize = true, AccessibleName = "Incident source and time" };
             var cases = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, AccessibleName = "Local incident case" }; var ids = new List<string>();
@@ -49,17 +57,26 @@ public sealed partial class Desktop
                 var all = IncidentWorkspace.Ids().Select(IncidentWorkspace.Load)
                     .OrderByDescending(item => item.CreatedUtc).ToList();
                 var shown = all.Where(item => filter.SelectedIndex == 2 || item.Closed == (filter.SelectedIndex == 1)).ToList();
+                if (groupByType.Checked)
+                    shown = shown.GroupBy(IncidentGroup).SelectMany(group => group).ToList();
                 counts.Text = all.Count(item => !item.Closed) + " needs review · " + all.Count(item => item.Closed) + " operator closed";
                 ids = shown.Select(item => item.Id).ToList();
                 cases.Items.Clear();
-                foreach (var item in shown) cases.Items.Add(item.Title + (item.Closed ? " · closed" : " · needs review"));
+                var groupSizes = shown.GroupBy(IncidentGroup).ToDictionary(group => group.Key, group => group.Count());
+                foreach (var item in shown)
+                {
+                    int count = groupSizes[IncidentGroup(item)];
+                    string groupLabel = groupByType.Checked && count > 1 ? " · " + count + " cases of this alert type" : "";
+                    cases.Items.Add(item.Title + (item.Closed ? " · closed" : " · needs review") + groupLabel);
+                }
                 if (ids.Count > 0) cases.SelectedIndex = Math.Max(0, ids.IndexOf(select));
                 else loadCase();
             };
             Action loadEvidence = () => { snapshot = CoverageHistory.Read((string)area.SelectedItem).LastOrDefault(); observations = snapshot?.Items ?? new List<EvidenceItem>(); evidence.Items.Clear(); foreach (var item in observations) evidence.Items.Add(item.State + " · " + item.Name); };
             cases.SelectedIndexChanged += delegate { loadCase(); }; area.SelectedIndexChanged += delegate { loadEvidence(); };
             filter.SelectedIndexChanged += delegate { refresh(cases.SelectedIndex >= 0 ? Selected() : null); };
-            panel.Controls.Add(counts); panel.Controls.Add(filter); panel.Controls.Add(cases); panel.Controls.Add(source);
+            groupByType.CheckedChanged += delegate { refresh(cases.SelectedIndex >= 0 ? Selected() : null); };
+            panel.Controls.Add(counts); panel.Controls.Add(filter); panel.Controls.Add(groupByType); panel.Controls.Add(cases); panel.Controls.Add(source);
             Help(panel, "Title for a new case:"); panel.Controls.Add(title);
             panel.Controls.Add(UtilityButton("Create a local case", () => { var item = IncidentWorkspace.Create(title.Text); if (filter.SelectedIndex == 1) filter.SelectedIndex = 0; refresh(item.Id); }));
             Help(panel, "Private notes (save deliberately before switching cases):"); panel.Controls.Add(notes); panel.Controls.Add(closed);
@@ -74,7 +91,20 @@ public sealed partial class Desktop
             panel.Controls.Add(UtilityButton("Open network settings to review manual isolation", () => { if (MessageBox.Show(dialog, "Open Windows network settings for manual isolation review? Disconnecting can interrupt remote access or support. FishTank will not disconnect adapters or change firewall rules.", "Containment review", MessageBoxButtons.YesNo) == DialogResult.Yes) Process.Start(new ProcessStartInfo("ms-settings:network-status") { UseShellExecute = true }); }));
             foreach (string item in new[] { "Isolation reviewed", "Recovery copy verified", "Credentials rotated on a trusted device", "Recovery and monitoring reviewed" }) { string step = item; panel.Controls.Add(UtilityButton("Record operator confirmation: " + step, () => { string id = Selected(); if (MessageBox.Show(dialog, "Record your confirmation of this step? It will be labeled operator-reported, not independently verified.\r\n" + step, "Confirm response step", MessageBoxButtons.YesNo) != DialogResult.Yes) return; IncidentWorkspace.ConfirmStep(id, step); loadCase(); })); }
             panel.Controls.Add(UtilityButton("Preview, redact and export this case", () => { string json = IncidentWorkspace.Export(Selected()); using (var review = UtilityDialog("Incident export review; nothing is sent", out var body)) { var editor = new TextBox { Multiline = true, ScrollBars = ScrollBars.Both, Height = 380, AccessibleName = "Editable incident export preview", Text = json }; Help(body, "This is a readable export containing notes and selected evidence, potentially including names and paths. Redact before sharing. Edited exports do not replace protected originals; edits can invalidate embedded evidence checksums."); body.Controls.Add(editor); body.Controls.Add(UtilityButton("Save this reviewed text as a new file", () => { using (var save = new SaveFileDialog { Filter = "Reviewed incident text|*.txt", FileName = "FishTank-incident-reviewed.txt" }) if (save.ShowDialog(review) == DialogResult.OK) RestoreFileWriter.WriteNew(save.FileName, Encoding.UTF8.GetBytes(editor.Text)); })); review.ShowDialog(dialog); } }));
-            refresh(null); loadEvidence(); dialog.FormClosing += delegate(object sender, FormClosingEventArgs e) { if (everydayWorking) e.Cancel = true; }; dialog.ShowDialog(this);
+            panel.Controls.Add(UtilityButton("Export diagnostics summary", () =>
+            {
+                string summary = IncidentWorkspace.ExportDiagnostics(Selected());
+                using (var save = new SaveFileDialog { Filter = "Diagnostics JSON|*.json", FileName = "FishTank-incident-diagnostics.json" })
+                    if (save.ShowDialog(dialog) == DialogResult.OK)
+                        RestoreFileWriter.WriteNew(save.FileName, Encoding.UTF8.GetBytes(summary));
+            }));
+            refresh(incidentInboxCase);
+            loadEvidence();
+            dialog.FormClosing += delegate(object sender, FormClosingEventArgs e) { if (everydayWorking) e.Cancel = true; };
+            dialog.ShowDialog(this);
+            incidentInboxFilter = filter.SelectedIndex;
+            incidentInboxGroupByType = groupByType.Checked;
+            if (cases.SelectedIndex >= 0) incidentInboxCase = Selected();
         }
     }
 }
