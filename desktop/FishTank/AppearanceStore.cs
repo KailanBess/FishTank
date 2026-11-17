@@ -107,4 +107,3 @@ public static class AppearanceStore
 		File.WriteAllText(path, Core.Json(value));
 	}
 }
-
