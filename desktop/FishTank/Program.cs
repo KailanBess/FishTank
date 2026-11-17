@@ -11,6 +11,7 @@ public static class Program
 	[STAThread]
 	public static int Main(string[] args)
 	{
+        AquariumWorkspace.Prepare();
 		try
 		{
             if (args.Length == 1 && args[0] == "--demo")
