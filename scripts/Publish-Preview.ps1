@@ -119,10 +119,16 @@ Stable signed updates retain their separate publisher-verification requirements.
  & gh release create $metadata.Tag @assets --repo $Repository --target $Commit --draft --prerelease --title "FishTank $($metadata.Tag) preview" --notes-file $notesPath
  if($LASTEXITCODE -ne 0){throw 'Preview release draft creation failed.'}
  # A draft's tag may not have a Git ref yet; retrieve it by release ID rather than /releases/tags.
- $list=& gh api "repos/$Repository/releases?per_page=100"
- if($LASTEXITCODE -ne 0){throw 'Created draft metadata could not be read.'}
- $drafts=@(($list | ConvertFrom-Json) | Where-Object { $_.tag_name -eq $metadata.Tag -and $_.draft })
- if($drafts.Count -ne 1){throw 'Created preview draft identity is ambiguous.'}
+ $drafts=@()
+ for($discovery=0;$discovery -lt 20;$discovery++){
+  $list=& gh api "repos/$Repository/releases?per_page=100"
+  if($LASTEXITCODE -ne 0){throw 'Created draft metadata could not be read.'}
+  $drafts=@(($list | ConvertFrom-Json) | Where-Object { $_.tag_name -eq $metadata.Tag -and $_.draft })
+  if($drafts.Count -gt 1){throw 'Created preview draft identity is ambiguous.'}
+  if($drafts.Count -eq 1){break}
+  if($discovery -lt 19){Start-Sleep -Seconds 3}
+ }
+ if($drafts.Count -ne 1){throw 'Created preview draft did not become visible; it remains unpublished for a safe retry.'}
  $releaseId=$drafts[0].id
  $ready=$false
  for($attempt=0;$attempt -lt 20;$attempt++){
