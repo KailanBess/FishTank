@@ -5,6 +5,7 @@ $createdToken=!$env:GH_TOKEN
 if($createdToken){$env:GH_TOKEN='fixture'}
 $checks=0
 function Assert($Condition,[string]$Name){if(!$Condition){throw $Name};$script:checks++}
+function Start-Sleep { param([int]$Seconds) $global:FishTankPublisherFixture.Sleeps++ }
 # This simple function captures every gh call. No native CLI or network call is made.
 function gh {
  $arguments=@($args);$state=$global:FishTankPublisherFixture;$global:LASTEXITCODE=0
@@ -37,6 +38,10 @@ function gh {
   }
   if($endpoint -like '*/releases?per_page=100'){
    if($null -eq $state.Release){return '[]'}
+   if($state.Created -gt 0){
+    $state.DiscoveryReads++
+    if(($state.Case -eq 'never-visible') -or (($state.Case -eq 'delayed-list') -and $state.DiscoveryReads -le 2)){return '[]'}
+   }
    return (ConvertTo-Json -InputObject @($state.Release) -Depth 12 -Compress)
   }
   if($endpoint -match '/releases/[0-9]+$'){
@@ -49,8 +54,8 @@ function gh {
  throw 'Unexpected publishing CLI invocation'
 }
 try{
- foreach($case in @('new','retry-owned-draft','existing-public','owner-draft','bad-digest')){
-  $state=@{Case=$case;IncludeServer=[bool]$IncludeServer;Archive=[IO.Path]::GetFullPath($Archive);Release=$null;Created=0;Deleted=0;Published=0}
+ foreach($case in @('new','delayed-list','never-visible','retry-owned-draft','existing-public','owner-draft','bad-digest')){
+  $state=@{Case=$case;IncludeServer=[bool]$IncludeServer;Archive=[IO.Path]::GetFullPath($Archive);Release=$null;Created=0;Deleted=0;Published=0;DiscoveryReads=0;Sleeps=0}
   if($case -in @('retry-owned-draft','existing-public','owner-draft')){
    # Read only metadata from the actual archive to select this version's tag.
    Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -62,11 +67,14 @@ try{
    $version=[Version]$Matches[1];$tag='preview-v'+$(if($version.Revision -eq 0){$version.ToString(3)}else{$version.ToString()})
    $state.Release=[pscustomobject]@{id=999;tag_name=$tag;draft=($case -ne 'existing-public');prerelease=$true;author=[pscustomobject]@{login=$(if($case -eq 'owner-draft'){'KailanBess'}else{'github-actions[bot]'})};body='Unsigned FishTank development preview fixture';assets=@()}
   }
-  $global:FishTankPublisherFixture=$state;$failed=$false
-  try{& $scriptPath -Repository KailanBess/FishTank -Commit ('a'*40) -RunId '123' -IncludeServer:$IncludeServer | Out-Null}catch{$failed=$true}
-  if($case -in @('new','retry-owned-draft')){
-   Assert (!$failed -and $state.Created -eq 1 -and $state.Published -eq 1) "Valid preview publisher failed: $case"
+  $global:FishTankPublisherFixture=$state;$failed=$false;$failure=''
+  try{& $scriptPath -Repository KailanBess/FishTank -Commit ('a'*40) -RunId '123' -IncludeServer:$IncludeServer | Out-Null}catch{$failed=$true;$failure=$_.Exception.Message}
+  if($case -in @('new','delayed-list','retry-owned-draft')){
+   Assert (!$failed -and $state.Created -eq 1 -and $state.Published -eq 1) "Valid preview publisher failed: $case. $failure"
    Assert ($state.Deleted -eq $(if($case -eq 'retry-owned-draft'){1}else{0})) 'Publisher touched unexpected drafts'
+   if($case -eq 'delayed-list'){Assert ($state.DiscoveryReads -eq 3 -and $state.Sleeps -eq 2) 'Publisher did not wait for draft discovery'}
+  }elseif($case -eq 'never-visible'){
+   Assert ($failed -and $state.Published -eq 0 -and $state.Release.draft -and $state.DiscoveryReads -eq 20) 'Missing draft discovery was not bounded or published unsafely'
   }elseif($case -eq 'existing-public'){
    Assert (!$failed -and $state.Created -eq 0 -and $state.Deleted -eq 0 -and $state.Published -eq 0) 'Published release was modified'
   }elseif($case -eq 'owner-draft'){
