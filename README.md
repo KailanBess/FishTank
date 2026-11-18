@@ -1,43 +1,60 @@
 # FishTank
 
-The 0.16.0 coordinated release includes the desktop app, CLI, embedded local browser dashboard and a separate checksummed Debian server kit. Windows builds remain unsigned previews with explicit opt-in updates. Server installation and live delivery require local configuration.
+FishTank **0.17.0** is a Windows security companion with a desktop app, CLI, optional local browser dashboard and a separate self-hosted verification server kit. This preview adds a consolidated **Safety and release readiness** review and optional shared quiet hours for release announcements.
 
-Version 0.15.6 includes [Aquarium family themes and customization](docs/AQUARIUM-APPEARANCE.md). The latest source and ZIP include the merged style changes and review fixes. Native Windows verification of this build remains pending. New profiles use Aquarium Ocean/Mint; existing profiles keep their saved choices. Open Customize FishTank → Use Aquarium style to preview and save the preset.
+## Download and trust
 
-Windows application builds and a self-hosted email/SMS verification backend.
+Download the current `FishTank-desktop-preview.zip` from [Releases](../../releases), extract the whole package into a new folder and run FishTank. Preview releases are unsigned. Aquarium can install approved preview packages; FishTank also retains its explicit opt-in GitHub preview update controls.
 
-Version 0.14 adds ransomware protection review, audit-first ASR/CFA controls, application/hardware security, software update inventory, opt-in persistence/network monitoring and incident-response cases. See [wider security coverage](docs/SECURITY-COVERAGE.md) and [0.14 validation](docs/SECURITY-COVERAGE-VALIDATION.md). Open Settings → All tools, or Ctrl+K. Windows changes require explicit preview/confirmation, administrator access and offline MFA; monitoring starts off.
+Preview updates check GitHub SHA-256 metadata, component identity and version, with a separate apply confirmation and retained executable rollback copies. Stable signed updates retain their separate publisher-pin and Authenticode requirements. No certificate checks are bypassed. A genuine code-signing certificate and independent security review remain release gates; do not treat an unsigned preview as independently audited protection for important secrets.
 
-Version 0.13 adds backup failure alerts, a vault health dashboard, recorded security changes, selective storage cleanup, portable profile transfer, isolated sample mode, in-app release notes and a four-step server connection wizard. Read [everyday tools](docs/EVERYDAY-TOOLS.md). Open Settings → All tools, or press Ctrl+K.
+## What you can do
 
-The 0.12 expansion adds Ctrl+K tool search, favorites, scan queues, encrypted automatic backups, vault history/attachments/import/undo, notifications, profiles/layouts, offline help, signed device reports and optional server passkeys/status. Read [app expansion](docs/APP-EXPANSION.md) and [initial server deployment](docs/SERVER-EXPANSION.md). The server is not deployed and the preview is unsigned. Download the [server setup kit](packages/FishTank-server-kit.zip) when ready to install it.
+- Review Windows protection health, Defender scans, integrity findings, disk/backup-age warnings and an activity timeline. Findings distinguish missing/stale evidence from observed issues.
+- Use opt-in scan schedules, scan queues, live Defender alerts and tray monitoring. Windows policies and other antivirus products can affect availability.
+- Review ransomware protection, ASR/CFA, application/hardware security, software updates, persistence and network exposure. Changes require explicit preview/confirmation and the applicable administrator/offline MFA access.
+- Use a master-passphrase-encrypted password vault and protected-file containers, encrypted backup copies, verification history and isolated restore drills.
+- Use app access controls, offline MFA and recovery codes, configurable idle locking, privacy tools, profiles and a previewed/redacted support report.
+- Pair an optional browser dashboard on the same PC. Pairing/session expiry, locking and vault authentication remain in force.
+- Configure optional email/SMS verification, server passkeys and signed device reports through a separate self-hosted service. These features require deployment and live tests.
 
-The [0.16.0 desktop preview](packages/FishTank-desktop-preview.zip) adds a [local browser dashboard and organized email/service password vault](docs/BROWSER-AND-ACCOUNT-ORGANIZATION.md). Open Settings → Open browser dashboard to pair locally; see the guide for Windows listener permissions and vault compatibility. It also includes [optional live Defender alerts and tray monitoring](docs/LIVE-DETECTION.md), alongside [disk-health and backup-age warnings](docs/DISK-HEALTH-AND-BACKUP-AGE.md), with separate creation/verification dates and configurable reminders. It retains passphrase-encrypted file containers and verified GitHub installation; see [protection and update setup](docs/PROTECTED-FILES-AND-GITHUB-UPDATES.md). Earlier [security/integrity tools](docs/SECURITY-AND-INTEGRITY.md) remain included. Windows, browser and server checks pass; see [0.13 validation evidence](docs/EVERYDAY-VALIDATION.md). Live server deployment, trusted signing and an independent audit remain pending. Original uploaded binaries below remain unchanged.
+Use **Ctrl+K** or **Settings → All tools** to find features. **Safety and release readiness** summarizes app access, offline recovery, publisher configuration, backup/restore evidence and optional server setup without exposing paths, account names, tokens or vault contents. It links directly to restore drills, signature inspection and connection/delivery tests. A configured connection or recorded backup is not proof of current delivery or restore success.
 
-## Files
+Aquarium can apply reviewed family colors and back up FishTank appearance only. Vaults, credentials, authentication records and security policy stay behind FishTank's native authenticated recovery tools. Supporting Aquarium quiet hours affect FishTank release announcements; security warnings and errors keep their existing controls.
 
-- [Windows desktop app](windows/FishTank.exe) and [CLI](windows/FishTank.Cli.exe): uploaded, unsigned development builds, preserved unchanged.
-- [Recovered desktop/CLI C# source](desktop/README.md): recovered from the uploaded assemblies and compiled successfully for .NET Framework 4.8. Read the recovery limitations before using rebuilt binaries.
-- [Server ZIP](packages/FishTank-server-selfhosted.zip): download using GitHub's **Download raw file** button, then copy it to Debian.
-- [Server source and installation instructions](server/README.md).
-- [Self-hosted Postfix/Gammu setup](server/SELF-HOSTED-SETUP.md).
-- [Previous update report](docs/FishTank-update-status.md) and [remaining checklist](docs/FishTank-remaining-checklist.md): historical reports supplied with the uploads; their test claims are not new verification.
+## Server status
 
-## Current deployment status
+The server kit contains source, service examples and setup instructions for Debian. It is not a deployed service. Live email/SMS delivery, device enrollment and outage recovery still require configured infrastructure and a real test. The self-hosted route needs a sender domain/mail configuration and, for cellular SMS, a compatible modem and active SMS-capable SIM. Keep runtime secrets, tokens, databases and private configuration outside Git.
 
-The user reported preparing Debian 13 with Python, a virtual environment, Waitress, loopback-only Postfix, Gammu SMSD, and a stopped FishTank systemd service definition. The application files have not yet been transferred to that server. Live email/SMS delivery and desktop integration have not been verified here. A sender domain/mail configuration and a compatible cellular modem with an active SMS-capable SIM remain necessary for the self-hosted route.
+Read [server installation](server/README.md), [self-hosted delivery](server/SELF-HOSTED-SETUP.md) and [server expansion](docs/SERVER-EXPANSION.md). The desktop connection wizard tests entered/saved HTTPS settings and supports actual delivery enrollment without disabling certificate verification.
 
-The backend generates and validates codes itself; authentik is not required. Keep runtime secrets, device tokens, databases, and private configuration outside Git. The included environment files contain placeholders only.
+## Guides
 
-## Backend tests
+- [Recovery, accessibility and signed releases](docs/RELEASE-AND-RECOVERY.md)
+- [Release review and remaining gates](docs/RELEASE-REVIEW.md)
+- [Outside usability testing](docs/BETA-TEST-GUIDE.md)
+- [Protection and update setup](docs/PROTECTED-FILES-AND-GITHUB-UPDATES.md)
+- [Security coverage](docs/SECURITY-COVERAGE.md)
+- [Everyday tools](docs/EVERYDAY-TOOLS.md)
+- [Local dashboard and account organization](docs/BROWSER-AND-ACCOUNT-ORGANIZATION.md)
+- [Source recovery limitations](desktop/README.md)
+
+Older binaries in `windows/` and historical uploaded reports are preserved reference material. Current downloads come from Releases; those historical reports do not prove current validation.
+
+## Build and verification
+
+Build on Windows with the .NET 8 SDK and .NET Framework 4.8 references:
+
+```powershell
+dotnet build desktop/FishTank.csproj -c Release
+./scripts/Run-ReleaseChecks.ps1
+```
+
+Server tests use simulated delivery and do not send email/SMS:
 
 ```sh
 cd server
 python3 -m unittest -v test_server test_transports
 ```
 
-These tests exercise SQLite verification state and simulated delivery interfaces; they do not send real email or SMS. Windows builds require Windows and have not been executed in this Linux workspace.
-
-Dashboard, scan scheduling, activity timeline, folder backup reminders, settings search and support-report controls are documented in [APP-INSIGHTS.md](docs/APP-INSIGHTS.md).
-Setup, scan progress/cancellation evidence, recovery, accessibility and signed release preparation are described in [RELEASE-AND-RECOVERY.md](docs/RELEASE-AND-RECOVERY.md).
-Release-readiness findings and the outside-testing guide are in [RELEASE-REVIEW.md](docs/RELEASE-REVIEW.md) and [BETA-TEST-GUIDE.md](docs/BETA-TEST-GUIDE.md).
+CI checks Windows security, resilience, UI, shared logic, browser sessions and server behavior before publishing a preview. Physical display/screen-reader tests, separate Windows-account recovery, genuine signed install/rollback interruption testing, independent security review and live delivery/outage checks remain external acceptance work. No installed profile, vault or Windows protection policy is modified by isolated fixtures.

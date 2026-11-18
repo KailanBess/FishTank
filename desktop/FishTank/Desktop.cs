@@ -148,7 +148,7 @@ public sealed partial class Desktop : Form
 		liveDisplay.Tick += delegate { RefreshLiveDisplay(); DispatchNotification(); browserBackend?.CheckIdle(); if (browser != null && !BrowserAccessAllowed()) LockBrowserSession(); }; liveDisplay.Start();
 		bool liveStarted = false;
         Shown += delegate { BeginInvoke((Action)OfferInitialSetup); };
-        Shown += delegate { try { if (AppReleaseNotes.Announce()) NotifySecurity("New FishTank release notes are available. Open What's new from All tools to review the installed version's additions."); } catch { SetStatus("Release notes are available in All tools; their read state could not be saved."); } };
+        Shown += delegate { try { if (AppReleaseNotes.Announce()) NotifyInformation("New FishTank release notes are available. Open What's new from All tools to review the installed version's additions."); } catch { SetStatus("Release notes are available in All tools; their read state could not be saved."); } };
 		Shown += delegate {
 			if (liveStarted) return; liveStarted = true;
 			try { if (SecurityPreferences.Load().LiveDetectionEnabled) liveDetection.Start(); }
@@ -228,14 +228,19 @@ public sealed partial class Desktop : Form
         SetStatus("Browser dashboard stopped. Its sessions and unlocked vault were cleared.");
     }
 
-	private void NotifySecurity(string message)
+	private void NotifySecurity(string message) => NotifySecurityCore(message, 1);
+
+    private void NotifyInformation(string message) => NotifySecurityCore(message, 0);
+
+    private void NotifySecurityCore(string message, int level)
 	{
 		if (IsDisposed) return;
 		SetStatus(message);
 		try
 		{
-			bool popup = NoticeCenter.Add(message, NotificationDestination.For(message), 1);
+			bool popup = NoticeCenter.Add(message, NotificationDestination.For(message), level);
 			if (!popup) return;
+            if (level == 0 && AquariumFamily.SuiteNoticePolicy.IsQuiet("FishTank", DateTime.Now)) return;
 			if (!SecurityPreferences.Load().DesktopNotifications) return;
 			EnsureTray();
 			notificationTarget = NotificationDestination.For(message);

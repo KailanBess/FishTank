@@ -71,6 +71,7 @@ internal static class ToolCatalog
         new ToolDefinition("accessibility","Accessibility","keyboard shortcuts screen reader large controls focus"),
         new ToolDefinition("activity","Activity timeline","scans detections quarantine backups updates"),
         new ToolDefinition("support","Support report","export redact preview diagnostics bug report")
+        ,new ToolDefinition("readiness","Safety and release readiness","recovery drill signing publisher certificate independent audit server delivery")
     };
     internal static string[] Ids => All.Select(x=>x.Id).ToArray();
     internal static ToolDefinition[] Search(string query) => All.Where(x => (query??"").Split(new[]{' '},StringSplitOptions.RemoveEmptyEntries).All(word => (x.Title+" "+x.Keywords).IndexOf(word,StringComparison.OrdinalIgnoreCase)>=0)).ToArray();
