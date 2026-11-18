@@ -6,8 +6,18 @@ public sealed partial class Desktop
 {
     private void OpenReleaseReadiness()
     {
-        using (var dialog = UtilityDialog("Signed release readiness", out var panel))
+        using (var dialog = UtilityDialog("Safety, recovery and signed release readiness", out var panel))
         {
+            var readiness = new TextBox { Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, Height = 260, Text = SafetyReadiness.Report(), AccessibleName = "Local safety and recovery readiness report" };
+            panel.Controls.Add(readiness);
+            panel.Controls.Add(UtilityButton("Refresh local readiness evidence", () => readiness.Text = SafetyReadiness.Report()));
+            panel.Controls.Add(UtilityButton("Save reviewed readiness report", () =>
+            {
+                using (var picker = new SaveFileDialog { Filter = "Text report|*.txt", FileName = "FishTank-readiness.txt" })
+                    if (picker.ShowDialog(dialog) == DialogResult.OK) File.WriteAllText(picker.FileName, readiness.Text);
+            }));
+            panel.Controls.Add(UtilityButton("Review backup age and run an isolated restore drill", () => OpenToolsTab("Backup and recovery")));
+            panel.Controls.Add(UtilityButton("Test optional server connection and actual delivery", OpenServerWizard));
             Help(panel, "Installed version: " + typeof(Core).Assembly.GetName().Version + ". Development preview ZIPs are unsigned. A trusted publisher signature requires the maintainer’s code-signing certificate; FishTank does not create a substitute certificate or bypass signature verification.");
             try { Help(panel, string.IsNullOrEmpty(SecurityPreferences.Load().PublisherCertificateSha256) ? "Publisher trust pin: not configured. Obtain the public certificate SHA-256 fingerprint from an independently trusted publisher source before enabling verified updates." : "Publisher trust pin: configured. Each downloaded update still needs checksum, publisher and version verification."); }
             catch { Help(panel, "Publisher trust preferences could not be read. Existing preferences were preserved."); }

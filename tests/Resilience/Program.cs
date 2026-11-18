@@ -22,6 +22,8 @@ internal static class Program
         try
         {
             Check(!AppAccess.Enabled && !ScanScheduleStore.Load().Enabled, "Fresh profile enables access or automation");
+            string readiness = SafetyReadiness.Report();
+            Check(readiness.Contains("independent security review") && readiness.Contains("No app password configured") && !readiness.Contains(root), "Readiness report invents certification, enables access or exposes paths");
             Check(LocalStoreFiles.ReadOptional(Path.Combine(root, "absent"), 10) == null, "Missing file not distinguished");
             SecurityPreferences.Save(new SecurityPreferences { DiskHealthWarnings = false });
             string prefs = Path.Combine(root, "security-preferences.dpapi"); byte[] original = File.ReadAllBytes(prefs); bool fallback = false;
