@@ -74,7 +74,6 @@ No private configuration, passwords, device tokens or databases are included.
  Write-Host "Packaged unsigned preview $version at $destination"
 }finally{
  $full=[IO.Path]::GetFullPath($temporary);$parent=[IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd([IO.Path]::DirectorySeparatorChar)+[IO.Path]::DirectorySeparatorChar
- if(!$full.StartsWith($parent,[StringComparison]::OrdinalIgnoreCase) -or [IO.Path]::GetFileName($full) -notmatch '^FishTank-package-[0-9a-f]{32}
-){throw 'Unsafe package fixture cleanup path.'}
+ if(!$full.StartsWith($parent,[StringComparison]::OrdinalIgnoreCase) -or [IO.Path]::GetFileName($full) -notmatch '^FishTank-package-[0-9a-f]{32}$'){throw 'Unsafe package fixture cleanup path.'}
  Remove-Item -LiteralPath $full -Recurse -Force
 }
