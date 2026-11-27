@@ -29,7 +29,7 @@ internal static class DependencyChecks
             {
                 int calls = 0;
                 var input = Snapshot("{\"version\":3,\"libraries\":{\"Fixture.Package/1.0.0\":{\"type\":\"package\"}}}");
-                var colors = Palette.From(new Appearance { Theme = "Dark", TextScale = scale });
+                var colors = Palette.From(new FishTank.Appearance { Theme = "Dark", TextScale = scale });
                 using (var form = new DependencyReviewDialog(colors, scale / 100f, (json, token) => { calls++; return Task.FromResult("{\"results\":[{}]}"); }))
                 {
                     form.ShowInTaskbar = false; form.StartPosition = FormStartPosition.Manual; form.Location = new Point(-4000, -4000);
