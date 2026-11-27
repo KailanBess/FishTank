@@ -1,6 +1,23 @@
 param([ValidateSet('Health','Network','Persistence','Events','Tailscale','Hardening','Accounts','Browsers','ScanPolicy','SecurityHealth','StartupInventory','Permissions','Exposure','DiskHealth','LiveProtection')][string]$Mode='Health')
 $ErrorActionPreference='Stop'
 $ProgressPreference='SilentlyContinue'
+function Read-CapabilityAccessTimes($Record) {
+    $start=$null;$stop=$null;$state='Unknown'
+    $startProperty=$Record.PSObject.Properties['LastUsedTimeStart']
+    $stopProperty=$Record.PSObject.Properties['LastUsedTimeStop']
+    try {
+        if($null -eq $startProperty -or $null -eq $stopProperty){throw 'No interval metadata'}
+        foreach($value in @($startProperty.Value,$stopProperty.Value)){
+            if($null -eq $value -or !($value -is [long] -or $value -is [int] -or $value -is [uint64] -or $value -is [uint32])){throw 'Interval metadata is not an integer'}
+        }
+        $rawStart=[long]$startProperty.Value;$rawStop=[long]$stopProperty.Value
+        if($rawStart -lt 0 -or $rawStop -lt 0){throw 'Invalid interval metadata'}
+        if($rawStart -gt 0){$start=[DateTime]::FromFileTimeUtc($rawStart).ToString('o')}
+        if($rawStop -gt 0){$stop=[DateTime]::FromFileTimeUtc($rawStop).ToString('o')}
+        $state=if($rawStart -eq 0 -and $rawStop -eq 0){'No recorded interval'}elseif($rawStart -eq 0 -or $rawStop -gt 0 -and $rawStop -lt $rawStart){'Inconsistent record'}elseif($rawStop -eq 0){'Open Windows record; not live-use proof'}else{'Closed Windows record'}
+    } catch {$start=$null;$stop=$null;$state='Unknown'}
+    [pscustomobject]@{LastUsedStartUtc=$start;LastUsedStopUtc=$stop;HistoryState=$state}
+}
 function Read-Check($Name,[scriptblock]$Read) {
     try { [pscustomobject]@{Name=$Name; State='Observed'; Value=(& $Read | Out-String).Trim()} }
     catch { [pscustomobject]@{Name=$Name; State='Unknown'; Value=$_.Exception.Message} }
@@ -113,12 +130,12 @@ $result = switch($Mode) {
     $root="HKCU:\Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\$kind"
     if(!(Test-Path -LiteralPath $root)){return 'No explicit current-user consent record found. This is not proof access is denied; review Windows Privacy settings.'}
     $items=@(Get-Item -LiteralPath $root)+@(Get-ChildItem -LiteralPath $root -Recurse | Select-Object -First 300)
-    $items | Sort-Object Name | Select-Object -First 300 | ForEach-Object {$p=Get-ItemProperty -LiteralPath $_.PSPath;[pscustomobject]@{Application=$_.Name;Consent=$p.Value}} | ConvertTo-Json -Compress -Depth 4
+    $items | Sort-Object Name | Select-Object -First 300 | ForEach-Object {$p=Get-ItemProperty -LiteralPath $_.PSPath;$times=Read-CapabilityAccessTimes $p;[pscustomobject]@{Application=$_.Name;Consent=$p.Value;LastUsedStartUtc=$times.LastUsedStartUtc;LastUsedStopUtc=$times.LastUsedStopUtc;HistoryState=$times.HistoryState}} | ConvertTo-Json -Compress -Depth 4
     if($items.Count -gt 300){'PARTIAL: only the first 300 records were inspected.'}
    }
   }
   Read-Check 'Machine app privacy policy' {$root='HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy';if(!(Test-Path $root)){return 'No explicit machine AppPrivacy policy. Per-app and Windows privacy settings still apply.'};Get-ItemProperty -LiteralPath $root | Select-Object LetAppsAccessCamera,LetAppsAccessMicrophone,LetAppsAccessLocation | ConvertTo-Json -Compress}
-  Read-Check 'Interpretation' {'Consent metadata can be absent or stale and does not cover every desktop application. Use Windows Privacy settings and the separate browser extension review. This inventory changes no permissions.'}
+  Read-Check 'Interpretation' {'Consent and last-used interval metadata can be absent, stale or incomplete and does not cover every desktop application. An open Windows interval record is not proof that a camera, microphone or location sensor is currently in use. Times describe recorded metadata, not an independently verified activity timeline. Use Windows Privacy settings and the separate browser extension review. This inventory changes no permissions and records no sensor content.'}
  }
  'Exposure' {
   Read-Check 'TCP listening ports and owning processes' {

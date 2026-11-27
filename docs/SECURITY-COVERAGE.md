@@ -15,6 +15,8 @@ Open **Settings → All tools** or **Ctrl+K**. All eight requested areas are inc
 
 ## Protection-change workflow
 
+The camera/microphone/location review includes Windows-recorded last-used interval metadata when present. UTC start/stop times are shown alongside consent records. Missing or malformed intervals remain Unknown; an open record is explicitly not proof of live sensor use. These per-user Windows records are incomplete and can be stale. No sensor content is collected and no permission is changed. Existing authenticated review/history storage remains in force.
+
 1. Collect current Ransomware or ASR evidence and review the event/coverage limitations.
 2. Open **Preview an audit-first protection change**. Choose CFA or one of the eight catalogued ASR rules, then request a fresh preview. It shows the previous/requested mode and can be exported as a text reference.
 3. Local changes require a Windows 10/11 client build of at least 19041, active Microsoft Defender with real-time protection, administrator execution, and configured FishTank app access/offline MFA. This build compatibility check does not determine Windows servicing/lifecycle support. CFA setup also checks cloud-delivered protection. Domain/enrollment/policy-managed settings and unknown prerequisites are refused.
