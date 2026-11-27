@@ -1,6 +1,6 @@
 # FishTank
 
-FishTank **0.18.0** is a Windows security companion with a desktop app, CLI, optional local browser dashboard and a separate self-hosted verification server kit. This preview adds recorded camera/microphone access intervals to Permissions review, alongside the existing safety/readiness review and optional shared quiet hours. Windows records can be stale or incomplete; an open interval is not proof that a sensor is currently active. No audio/video is captured and permissions are never changed by the review.
+FishTank **0.19.0** is a Windows security companion with a desktop app, CLI, optional local browser dashboard and a separate self-hosted verification server kit. This preview adds explicitly confirmed dependency-advisory queries for selected NuGet/CycloneDX snapshots and retains recorded camera/microphone access intervals to Permissions review, alongside the existing safety/readiness review and optional shared quiet hours. Windows records can be stale or incomplete; an open interval is not proof that a sensor is currently active. No audio/video is captured and permissions are never changed by the review.
 
 ## Download and trust
 
@@ -58,3 +58,6 @@ python3 -m unittest -v test_server test_transports
 ```
 
 CI checks Windows security, resilience, UI, shared logic, browser sessions and server behavior before publishing a preview. Physical display/screen-reader tests, separate Windows-account recovery, genuine signed install/rollback interruption testing, independent security review and live delivery/outage checks remain external acceptance work. No installed profile, vault or Windows protection policy is modified by isolated fixtures.
+## Dependency advisory review
+
+Open All tools → Dependency advisory review. Importing a selected snapshot is local; only an explicitly confirmed OSV query sends reviewed package names/ecosystems/versions. Raw files, paths and credentials are not transmitted. Results retain partial/unavailable/unknown states; no matches is not a safety verdict. No software is changed, and reports use new-file JSON export only. See [formats, disclosure and limits](docs/DEPENDENCY-ADVISORIES.md).

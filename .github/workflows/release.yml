@@ -78,6 +78,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           ./tests/Test-Installer.ps1
           ./scripts/Test-ReproducibleBuild.ps1
+      - name: Check opt-in dependency advisory review with offline provider fixtures
+        shell: pwsh
+        run: |
+          dotnet build tests/DependencyChecks/DependencyChecks.csproj -c Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./tests/DependencyChecks/bin/Release/net48/DependencyChecks.exe "$PWD/ui-artifacts/dependencies"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Sign and verify release executables
         shell: powershell
         env:

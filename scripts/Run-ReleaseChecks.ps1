@@ -18,7 +18,7 @@ Check-Step 'Browser' { & $DotnetPath run --project (Join-Path $root 'tests/Brows
 Check-Step 'PowerShell' { & (Join-Path $root 'tests/Check-PowerShell.ps1'); if($?){$global:LASTEXITCODE=0}else{$global:LASTEXITCODE=1} }
 Check-Step 'CoverageFixtures' { & (Join-Path $root 'tests/Test-Coverage.ps1'); if($?){$global:LASTEXITCODE=0}else{$global:LASTEXITCODE=1} }
 Check-Step 'Collectors' { & (Join-Path $root 'tests/Test-Collectors.ps1'); if($?){$global:LASTEXITCODE=0}else{$global:LASTEXITCODE=1} }
-foreach($suite in @('Resilience','Expansion','WindowsSecurity','WindowsUi')){
+foreach($suite in @('Resilience','Expansion','WindowsSecurity','WindowsUi','DependencyChecks')){
  Check-Step $suite {
   & $DotnetPath build (Join-Path $root "tests/$suite/$suite.csproj") -c Release
   if($LASTEXITCODE -ne 0){throw 'Build failed'}

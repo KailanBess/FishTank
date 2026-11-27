@@ -47,6 +47,7 @@ internal static class ToolCatalog
         new ToolDefinition("appcontrol","Application control review","Smart App Control AppLocker code integrity unsigned publisher"),
         new ToolDefinition("hardware","Hardware security review","Secure Boot TPM VBS memory integrity vulnerable drivers"),
         new ToolDefinition("software","Software updates inventory","installed versions WinGet available updates freshness"),
+        new ToolDefinition("dependencies","Dependency advisory review","NuGet CycloneDX OSV package vulnerabilities snapshot opt-in metadata"),
         new ToolDefinition("persistence","Persistence monitoring","startup services scheduled tasks WMI changes"),
         new ToolDefinition("exposure","Network exposure monitor","listeners ports firewall remote access changes"),
         new ToolDefinition("incident","Incident response workspace","timeline preserve evidence hash containment recovery case"),

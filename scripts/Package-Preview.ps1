@@ -17,6 +17,7 @@ try{
   'docs/APP-EXPANSION.md',
   'docs/EVERYDAY-TOOLS.md',
   'docs/SECURITY-COVERAGE.md',
+  'docs/DEPENDENCY-ADVISORIES.md',
   'docs/SECURITY-COVERAGE-VALIDATION.md',
   'docs/EVERYDAY-VALIDATION.md',
   'docs/EXPANSION-VALIDATION.md',
@@ -61,6 +62,7 @@ New profiles use Aquarium Ocean/Mint styling. Existing saved appearances are ret
 Simple view is the default. Advanced view adds evidence and controls without changing protection.
 
 This is not an audited or production-approved security release. Automated Windows runtime and UI checks from earlier versions are recorded in the validation guides; native verification of 0.15.6 is pending (see AQUARIUM-APPEARANCE.md); independent security review and physical-device acceptance remain necessary. See LIVE-VALIDATION.md for live-checking tests and their limits.
+Dependency advisory review explicitly previews a selected NuGet/CycloneDX package snapshot before an optional OSV metadata query. It makes no protection verdict and changes no software. Read DEPENDENCY-ADVISORIES.md for formats, network disclosure, limits and export behavior.
 The executables are unsigned. Settings > GitHub updates offers opt-in preview updates without a certificate; see PREVIEW-UPDATES.md. These builds cannot pass the separate signed-update gate. All updates use a separate confirmed installer and newer-version/digest checks. Optional unsigned preview updates need no certificate or signing secrets. Stable signed updates additionally require a configured publisher certificate pin and valid signatures. Independent security review remains an external requirement.
 
 No private configuration, passwords, device tokens or databases are included.
@@ -70,4 +72,9 @@ No private configuration, passwords, device tokens or databases are included.
  $destination=Join-Path $root 'packages/FishTank-desktop-preview.zip'
  Compress-Archive -Path (Join-Path $temporary '*') -DestinationPath $destination -Force
  Write-Host "Packaged unsigned preview $version at $destination"
-}finally{Remove-Item -LiteralPath $temporary -Recurse -Force}
+}finally{
+ $full=[IO.Path]::GetFullPath($temporary);$parent=[IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd([IO.Path]::DirectorySeparatorChar)+[IO.Path]::DirectorySeparatorChar
+ if(!$full.StartsWith($parent,[StringComparison]::OrdinalIgnoreCase) -or [IO.Path]::GetFileName($full) -notmatch '^FishTank-package-[0-9a-f]{32}
+){throw 'Unsafe package fixture cleanup path.'}
+ Remove-Item -LiteralPath $full -Recurse -Force
+}
