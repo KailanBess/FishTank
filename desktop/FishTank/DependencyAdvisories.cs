@@ -256,7 +256,6 @@ public static class DependencyAdvisories
             var request = (HttpWebRequest)WebRequest.Create("https://api.osv.dev/v1/querybatch");
             request.Method = "POST"; request.ContentType = "application/json"; request.Accept = "application/json"; request.UserAgent = "FishTank-dependency-review";
             request.ServerCertificateValidationCallback = (sender, certificate, chain, errors) => errors == System.Net.Security.SslPolicyErrors.None;
-            request.CheckCertificateRevocationList = true;
             request.AllowAutoRedirect = false; request.UseDefaultCredentials = false; request.Credentials = null;
             request.Timeout = 15000; request.ReadWriteTimeout = 15000; request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
             byte[] bytes = Encoding.UTF8.GetBytes(json); request.ContentLength = bytes.Length;
