@@ -1,4 +1,5 @@
 $ErrorActionPreference='Stop'
+& (Join-Path $PSScriptRoot 'Test-CapabilityHistory.ps1')
 $global:FishTankFixtureRealtime=$true
 $global:FishTankFixtureSignatureAge=0
 $global:FishTankFixtureBoot=$true

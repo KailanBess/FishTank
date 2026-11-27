@@ -1,6 +1,6 @@
 # FishTank
 
-FishTank **0.17.0** is a Windows security companion with a desktop app, CLI, optional local browser dashboard and a separate self-hosted verification server kit. This preview adds a consolidated **Safety and release readiness** review and optional shared quiet hours for release announcements.
+FishTank **0.18.0** is a Windows security companion with a desktop app, CLI, optional local browser dashboard and a separate self-hosted verification server kit. This preview adds recorded camera/microphone access intervals to Permissions review, alongside the existing safety/readiness review and optional shared quiet hours. Windows records can be stale or incomplete; an open interval is not proof that a sensor is currently active. No audio/video is captured and permissions are never changed by the review.
 
 ## Download and trust
 

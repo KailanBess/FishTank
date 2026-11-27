@@ -8,7 +8,7 @@ using System.Runtime.CompilerServices;
 
 [assembly: AssemblyProduct("FishTank")]
 [assembly: AssemblyDescription("Windows security companion — development preview")]
-[assembly: AssemblyFileVersion("0.17.0.0")]
+[assembly: AssemblyFileVersion("0.18.0.0")]
 [assembly: AssemblyTitle("FishTank")]
-[assembly: AssemblyInformationalVersion("0.17.0-development")]
-[assembly: AssemblyVersion("0.17.0.0")]
+[assembly: AssemblyInformationalVersion("0.18.0-development")]
+[assembly: AssemblyVersion("0.18.0.0")]
