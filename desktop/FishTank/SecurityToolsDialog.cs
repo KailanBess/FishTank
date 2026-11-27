@@ -49,6 +49,7 @@ public sealed class SecurityToolsDialog : Form
         Add(reviews, "Camera, microphone and location", () => Run(() => SecurityReviews.Run("Permissions", false)));
         Add(reviews, "Browser extensions", () => Run(() => Core.Collect("Browsers")));
         Add(reviews, "Network exposure", () => Run(() => SecurityReviews.Run("Exposure", false)));
+        Add(reviews, "Dependency advisories (OSV)", () => { using (var dialog = new DependencyReviewDialog(colors, textScale)) dialog.ShowDialog(this); });
         Add(reviews, "Accept startup baseline", () => {
             if (Confirm("Record or replace the trusted startup baseline? Only do this after reviewing the startup configuration and trusting it. Future comparisons use this baseline until you explicitly replace it."))
                 Authorize(() => Run(() => SecurityReviews.Run("StartupInventory", true)));

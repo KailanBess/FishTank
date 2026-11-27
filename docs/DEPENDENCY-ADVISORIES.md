@@ -1,0 +1,13 @@
+# Dependency advisory review
+
+FishTank 0.19 adds an explicit, read-only review of user-selected NuGet `project.assets.json` schema-3 or CycloneDX 1.5 snapshots containing versioned NuGet/PyPI package URLs. It does not scan installed software or execute build/restore scripts. Inputs are bounded to 4 MiB and 256 supported package versions; unsupported items remain counted as skipped. Duplicate JSON keys and unsupported schemas are refused. Snapshot hashes attribute the selected bytes, not their trust or freshness.
+
+Open **All tools → Dependency advisory review** or **Security and integrity tools → Dependency advisories (OSV)**. Selection and parsing are local. Review the package table, then explicitly confirm **Query OSV (online)**. Only supported package names, ecosystems and versions are sent to `https://api.osv.dev/v1/querybatch`; raw files, paths, credentials and the source hash are not sent. Package metadata may identify private software, and the provider sees the connection IP. No request is made on dialog startup or file selection. HTTPS uses ordinary certificate/hostname validation; it does not change global trust settings or bypass certificate errors; redirects and default credentials are disabled.
+
+Results distinguish advisory IDs, no published matches, partial, unavailable and unknown. No matches is not proof of safety. Four provider pages and 2,000 advisory-ID entries bound the check; pagination cycles, limits and malformed results cannot become a completed no-match result. IDs may alias the same issue. Severity, exploitability and fixes are not inferred from the batch response. The check never updates, installs, removes or quarantines software. Provider data and imported restore snapshots can be incomplete or stale.
+
+**Save new JSON report** writes a complete report to a new `.json` file outside the profile/program folders; existing files and linked destinations are refused. It includes the source hash, supported package metadata, skipped count, observation time, fixed result codes and OSV advisory links, without raw provider errors or unknown source fields. Cancellation clears the current result and does not publish an incomplete report as completed. No query results are retained automatically.
+
+The regression suite uses generated package/response fixtures and does not contact the real provider. Live provider behavior, physical display/screen-reader acceptance and independent security review remain separate checks. This is not a protection-effectiveness certification.
+
+API contract: [OSV batch queries](https://google.github.io/osv.dev/post-v1-querybatch/), [OSV pagination](https://google.github.io/osv.dev/post-v1-query/).

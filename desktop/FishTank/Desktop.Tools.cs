@@ -31,7 +31,7 @@ public sealed partial class Desktop
         {
             case "readiness": OpenReleaseReadiness(); break;
             case "ransomware":OpenCoverageArea("Ransomware");break;case "asr":OpenCoverageArea("ASR");break;case "appcontrol":OpenCoverageArea("AppControl");break;
-            case "hardware":OpenCoverageArea("Hardware");break;case "software":OpenCoverageArea("Software");break;case "persistence":OpenCoverageArea("Persistence");break;case "exposure":OpenCoverageArea("Network");break;case "incident":OpenIncidentWorkspace();break;
+            case "hardware":OpenCoverageArea("Hardware");break;case "dependencies":using(var dependencyDialog=new DependencyReviewDialog(palette,appearance.TextScale/100f))dependencyDialog.ShowDialog(this);break;case "software":OpenCoverageArea("Software");break;case "persistence":OpenCoverageArea("Persistence");break;case "exposure":OpenCoverageArea("Network");break;case "incident":OpenIncidentWorkspace();break;
             case "changes":OpenSecurityChanges();break;case "cleanup":OpenStorageCleanup();break;case "transfer":OpenPortableTransfer();break;
             case "demo":OpenDemo();break;case "notes":OpenWhatsNew();break;case "server":OpenServerWizard();break;
             case "search":OpenToolsHub();break;case "notices":OpenNotificationCenter();break;case "backups":OpenBackupCenter();break;case "queue":OpenQueueCenter();break;
